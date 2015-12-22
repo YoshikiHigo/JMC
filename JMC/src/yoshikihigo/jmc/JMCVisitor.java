@@ -1,5 +1,12 @@
 package yoshikihigo.jmc;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Stack;
+
+import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
 import org.eclipse.jdt.core.dom.AnnotationTypeMemberDeclaration;
@@ -37,6 +44,7 @@ import org.eclipse.jdt.core.dom.ForStatement;
 import org.eclipse.jdt.core.dom.IfStatement;
 import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.InfixExpression;
+import org.eclipse.jdt.core.dom.InfixExpression.Operator;
 import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.InstanceofExpression;
 import org.eclipse.jdt.core.dom.IntersectionType;
@@ -94,7 +102,35 @@ import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.WhileStatement;
 import org.eclipse.jdt.core.dom.WildcardType;
 
+import yoshikihigo.jmc.data.JMethod;
+import yoshikihigo.jmc.data.JStatement;
+import yoshikihigo.jmc.data.JToken;
+
 public class JMCVisitor extends ASTVisitor {
+
+	final private String file;
+	final private CompilationUnit root;
+	final private Stack<JMethod> methodsStack;
+	final private Stack<JStatement> statementsStack;
+	final private Stack<Map<String, String>> variablesStack;
+	final private List<JMethod> methods;
+
+	JMCVisitor(final String file, final CompilationUnit root) {
+		this.file = file;
+		this.root = root;
+		this.methodsStack = new Stack<>();
+		this.statementsStack = new Stack<>();
+		this.variablesStack = new Stack<>();
+		this.methods = new ArrayList<>();
+		this.methodsStack.push(new JMethod(file, -1, -1));
+		if (JMCConfig.getInstance().isDEBUG()) {
+			System.out.println(file);
+		}
+	}
+
+	List<JMethod> getMethods() {
+		return new ArrayList<JMethod>(this.methods);
+	}
 
 	@Override
 	public boolean visit(final AnnotationTypeDeclaration node) {
@@ -113,32 +149,108 @@ public class JMCVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(final ArrayAccess node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			node.getArray().accept(this);
+			this.statementsStack.peek()
+					.addToken(JToken.LEFTSQUAREBRACKET.value);
+			node.getIndex().accept(this);
+			this.statementsStack.peek().addToken(
+					JToken.RIGHTSQUAREBRACKET.value);
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final ArrayCreation node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			this.statementsStack.peek().addToken(JToken.NEW.value);
+
+			if (null == node.getInitializer()) {
+				node.getType().getElementType().accept(this);
+				for (final Object o : node.dimensions()) {
+					this.statementsStack.peek().addToken(
+							JToken.LEFTSQUAREBRACKET.value);
+					((ASTNode) o).accept(this);
+					this.statementsStack.peek().addToken(
+							JToken.RIGHTSQUAREBRACKET.value);
+				}
+			}
+
+			else {
+				node.getType().accept(this);
+				node.getInitializer().accept(this);
+			}
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final ArrayInitializer node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			this.statementsStack.peek().addToken(JToken.LEFTBRACKET.value);
+			this.addTokens(this.statementsStack.peek(), node.expressions());
+			this.statementsStack.peek().addToken(JToken.RIGHTBRACKET.value);
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final ArrayType node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			node.getElementType().accept(this);
+			for (int i = 0; i < node.getDimensions(); i++) {
+				this.statementsStack.peek().addToken(
+						JToken.LEFTSQUAREBRACKET.value);
+				this.statementsStack.peek().addToken(
+						JToken.RIGHTSQUAREBRACKET.value);
+			}
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final AssertStatement node) {
-		return super.visit(node);
+
+		final JMethod method = this.methodsStack.peek();
+		final int line = this.getFromLineNumber(node);
+		final JStatement statement = new JStatement(method.id, line);
+		this.statementsStack.push(statement);
+		this.variablesStack.push(new HashMap<String, String>());
+
+		statement.addToken(JToken.ASSERT.value);
+		node.getExpression().accept(this);
+		statement.addToken(JToken.COLON.value);
+		node.getMessage().accept(this);
+		statement.addToken(JToken.SEMICOLON.value);
+
+		this.statementsStack.pop();
+		this.variablesStack.pop();
+		method.addStatement(statement);
+		if (JMCConfig.getInstance().isDEBUG()) {
+			this.print("assert statement", statement);
+		}
+		return false;
 	}
 
 	@Override
 	public boolean visit(final Assignment node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			node.getLeftHandSide().accept(this);
+			final Assignment.Operator operator = node.getOperator();
+			this.statementsStack.peek().addToken(operator.toString());
+			node.getRightHandSide().accept(this);
+		}
+
+		return false;
 	}
 
 	@Override
@@ -153,32 +265,99 @@ public class JMCVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(final BooleanLiteral node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			this.statementsStack.peek().addToken(node.toString());
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final BreakStatement node) {
-		return super.visit(node);
+
+		final JMethod method = this.methodsStack.peek();
+		final int line = getFromLineNumber(node);
+		final JStatement statement = new JStatement(method.id, line);
+		this.statementsStack.push(statement);
+		this.variablesStack.push(new HashMap<String, String>());
+
+		statement.addToken(JToken.BREAK.value);
+		if (null != node.getLabel()) {
+			node.getLabel().accept(this);
+		}
+		statement.addToken(JToken.SEMICOLON.value);
+
+		this.statementsStack.pop();
+		this.variablesStack.pop();
+		method.addStatement(statement);
+		if (JMCConfig.getInstance().isDEBUG()) {
+			this.print("break statement", statement);
+		}
+		return false;
 	}
 
 	@Override
 	public boolean visit(final CastExpression node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			this.statementsStack.peek().addToken(JToken.LEFTPAREN.value);
+			node.getType().accept(this);
+			this.statementsStack.peek().addToken(JToken.RIGHTPAREN.value);
+			node.getExpression().accept(this);
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final CatchClause node) {
-		return super.visit(node);
+
+		final JMethod method = this.methodsStack.peek();
+		final int line = getFromLineNumber(node);
+		final JStatement statement = new JStatement(method.id, line);
+		this.statementsStack.push(statement);
+		this.variablesStack.push(new HashMap<String, String>());
+
+		statement.addToken(JToken.CATCH.value);
+		statement.addToken(JToken.LEFTPAREN.value);
+		node.getException().accept(this);
+		statement.addToken(JToken.RIGHTPAREN.value);
+
+		this.statementsStack.pop();
+		this.variablesStack.pop();
+		method.addStatement(statement);
+		if (JMCConfig.getInstance().isDEBUG()) {
+			System.out.println("catch clause: " + statement.getText());
+		}
+
+		node.getBody().accept(this);
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final CharacterLiteral node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			this.statementsStack.peek().addToken("$CHAR");
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final ClassInstanceCreation node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			this.statementsStack.peek().addToken(JToken.NEW.value);
+			node.getType().accept(this);
+			this.statementsStack.peek().addToken(JToken.LEFTPAREN.value);
+			this.addTokens(this.statementsStack.peek(), node.arguments());
+			this.statementsStack.peek().addToken(JToken.RIGHTPAREN.value);
+		}
+
+		return false;
 	}
 
 	@Override
@@ -188,17 +367,64 @@ public class JMCVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(final ConditionalExpression node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			node.getExpression().accept(this);
+			this.statementsStack.peek().addToken(JToken.HATENA.value);
+			node.getThenExpression().accept(this);
+			this.statementsStack.peek().addToken(JToken.COLON.value);
+			node.getElseExpression().accept(this);
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final ConstructorInvocation node) {
-		return super.visit(node);
+
+		final JMethod method = this.methodsStack.peek();
+		final int line = getFromLineNumber(node);
+		final JStatement statement = new JStatement(method.id, line);
+		this.statementsStack.push(statement);
+		this.variablesStack.push(new HashMap<String, String>());
+
+		this.statementsStack.peek().addToken(JToken.THIS.value);
+		this.statementsStack.peek().addToken(JToken.LEFTPAREN.value);
+		this.addTokens(this.statementsStack.peek(), node.arguments());
+		this.statementsStack.peek().addToken(JToken.RIGHTPAREN.value);
+		this.statementsStack.peek().addToken(JToken.SEMICOLON.value);
+
+		this.statementsStack.pop();
+		this.variablesStack.pop();
+		method.addStatement(statement);
+		if (JMCConfig.getInstance().isDEBUG()) {
+			this.print("this invocation", statement);
+		}
+		return false;
 	}
 
 	@Override
 	public boolean visit(final ContinueStatement node) {
-		return super.visit(node);
+
+		final JMethod method = this.methodsStack.peek();
+		final int line = getFromLineNumber(node);
+		final JStatement statement = new JStatement(method.id, line);
+		this.statementsStack.push(statement);
+		this.variablesStack.push(new HashMap<String, String>());
+
+		statement.addToken(JToken.CONTINUE.value);
+		if (null != node.getLabel()) {
+			node.getLabel().accept(this);
+		}
+		statement.addToken(JToken.SEMICOLON.value);
+
+		this.statementsStack.pop();
+		this.variablesStack.pop();
+		method.addStatement(statement);
+		if (JMCConfig.getInstance().isDEBUG()) {
+			this.print("continue statement", statement);
+		}
+		return false;
 	}
 
 	@Override
@@ -213,17 +439,62 @@ public class JMCVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(final DoStatement node) {
-		return super.visit(node);
+
+		if (null != node.getBody()) {
+			node.getBody().accept(this);
+		}
+
+		final JMethod method = this.methodsStack.peek();
+		final int line = getFromLineNumber(node.getExpression());
+		final JStatement statement = new JStatement(method.id, line);
+		this.statementsStack.push(statement);
+		this.variablesStack.push(new HashMap<String, String>());
+
+		node.getExpression().accept(this);
+
+		this.statementsStack.pop();
+		this.variablesStack.pop();
+		method.addStatement(statement);
+		if (JMCConfig.getInstance().isDEBUG()) {
+			this.print("do conditional expression", statement);
+		}
+		return false;
 	}
 
 	@Override
 	public boolean visit(final EmptyStatement node) {
-		return super.visit(node);
+
+		final JMethod method = this.methodsStack.peek();
+		final int line = getFromLineNumber(node);
+		final JStatement statement = new JStatement(method.id, line);
+		statement.addToken(JToken.SEMICOLON.value);
+		method.addStatement(statement);
+		return false;
 	}
 
 	@Override
 	public boolean visit(final EnhancedForStatement node) {
-		return super.visit(node);
+
+		final JMethod method = this.methodsStack.peek();
+		final int line = getFromLineNumber(node);
+		final JStatement statement = new JStatement(method.id, line);
+		this.statementsStack.push(statement);
+		this.variablesStack.push(new HashMap<String, String>());
+
+		node.getParameter().accept(this);
+		statement.addToken(JToken.COLON.value);
+		node.getExpression().accept(this);
+
+		this.statementsStack.pop();
+		this.variablesStack.pop();
+		method.addStatement(statement);
+		if (JMCConfig.getInstance().isDEBUG()) {
+			this.print("foreach expression", statement);
+		}
+
+		node.getBody().accept(this);
+
+		return false;
 	}
 
 	@Override
@@ -243,12 +514,35 @@ public class JMCVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(final ExpressionStatement node) {
-		return super.visit(node);
+
+		final JMethod method = this.methodsStack.peek();
+		final int line = getFromLineNumber(node);
+		final JStatement statement = new JStatement(method.id, line);
+		this.statementsStack.push(statement);
+		this.variablesStack.push(new HashMap<String, String>());
+
+		node.getExpression().accept(this);
+		statement.addToken(JToken.SEMICOLON.value);
+
+		this.statementsStack.pop();
+		this.variablesStack.pop();
+		method.addStatement(statement);
+		if (JMCConfig.getInstance().isDEBUG()) {
+			this.print("expression statement", statement);
+		}
+		return false;
 	}
 
 	@Override
 	public boolean visit(final FieldAccess node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			node.getExpression().accept(this);
+			this.statementsStack.peek().addToken(JToken.DOT.value);
+			node.getName().accept(this);
+		}
+
+		return false;
 	}
 
 	@Override
@@ -258,12 +552,84 @@ public class JMCVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(final ForStatement node) {
-		return super.visit(node);
+
+		final JMethod method = this.methodsStack.peek();
+
+		for (final Object o : node.initializers()) {
+			final ASTNode n = (ASTNode) o;
+			final int line = getFromLineNumber(node);
+			final JStatement statement = new JStatement(method.id, line);
+			this.statementsStack.push(statement);
+			this.variablesStack.push(new HashMap<String, String>());
+
+			n.accept(this);
+
+			this.statementsStack.pop();
+			this.variablesStack.pop();
+			method.addStatement(statement);
+		}
+
+		if (null != node.getExpression()) {
+			final int line = getFromLineNumber(node.getExpression());
+			final JStatement statement = new JStatement(method.id, line);
+			this.statementsStack.push(statement);
+			this.variablesStack.push(new HashMap<String, String>());
+
+			node.getExpression().accept(this);
+
+			this.statementsStack.pop();
+			this.variablesStack.pop();
+			method.addStatement(statement);
+			if (JMCConfig.getInstance().isDEBUG()) {
+				this.print("for conditional expression", statement);
+			}
+		}
+
+		for (final Object o : node.updaters()) {
+			final ASTNode n = (ASTNode) o;
+			final int line = getFromLineNumber(node);
+			final JStatement statement = new JStatement(method.id, line);
+			this.statementsStack.push(statement);
+			this.variablesStack.push(new HashMap<String, String>());
+
+			n.accept(this);
+
+			this.statementsStack.pop();
+			this.variablesStack.pop();
+			method.addStatement(statement);
+		}
+
+		if (null != node.getBody()) {
+			node.getBody().accept(this);
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final IfStatement node) {
-		return super.visit(node);
+
+		final JMethod method = this.methodsStack.peek();
+		final int line = getFromLineNumber(node.getExpression());
+		final JStatement statement = new JStatement(method.id, line);
+		this.statementsStack.push(statement);
+		this.variablesStack.push(new HashMap<String, String>());
+
+		node.getExpression().accept(this);
+
+		this.statementsStack.pop();
+		this.variablesStack.pop();
+		method.addStatement(statement);
+		if (JMCConfig.getInstance().isDEBUG()) {
+			this.print("if conditional expression", statement);
+		}
+
+		node.getThenStatement().accept(this);
+		if (null != node.getElseStatement()) {
+			node.getElseStatement().accept(this);
+		}
+
+		return false;
 	}
 
 	@Override
@@ -273,7 +639,17 @@ public class JMCVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(final InfixExpression node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			node.getLeftOperand().accept(this);
+
+			final Operator operator = node.getOperator();
+			this.statementsStack.peek().addToken(operator.toString());
+
+			node.getRightOperand().accept(this);
+		}
+
+		return false;
 	}
 
 	@Override
@@ -283,7 +659,14 @@ public class JMCVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(final InstanceofExpression node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			node.getLeftOperand().accept(this);
+			this.statementsStack.peek().addToken(JToken.INSTANCEOF.value);
+			node.getRightOperand().accept(this);
+		}
+
+		return false;
 	}
 
 	@Override
@@ -303,7 +686,20 @@ public class JMCVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(final LambdaExpression node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			if (node.hasParentheses()) {
+				this.statementsStack.peek().addToken(JToken.LEFTPAREN.value);
+			}
+			this.addTokens(this.statementsStack.peek(), node.parameters());
+			if (node.hasParentheses()) {
+				this.statementsStack.peek().addToken(JToken.RIGHTPAREN.value);
+			}
+			this.statementsStack.peek().addToken("->");
+			node.getBody().accept(this);
+		}
+
+		return false;
 	}
 
 	@Override
@@ -328,12 +724,38 @@ public class JMCVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(final MethodDeclaration node) {
-		return super.visit(node);
+
+		final int fromLine = this.getFromLineNumber(node);
+		final int toLine = this.getToLineNumber(node);
+		final JMethod method = new JMethod(this.file, fromLine, toLine);
+		this.methodsStack.push(method);
+
+		if (null != node.getBody()) {
+			node.getBody().accept(this);
+		}
+
+		this.methodsStack.pop();
+		this.methods.add(method);
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final MethodInvocation node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			if (null != node.getExpression()) {
+				node.getExpression().accept(this);
+				this.statementsStack.peek().addToken(JToken.DOT.value);
+			}
+			final String name = node.getName().getIdentifier();
+			this.statementsStack.peek().addToken(name);
+			this.statementsStack.peek().addToken(JToken.LEFTPAREN.value);
+			this.addTokens(this.statementsStack.peek(), node.arguments());
+			this.statementsStack.peek().addToken(JToken.RIGHTPAREN.value);
+		}
+
+		return false;
 	}
 
 	@Override
@@ -363,12 +785,22 @@ public class JMCVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(final NullLiteral node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			this.statementsStack.peek().addToken(JToken.NULL.value);
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final NumberLiteral node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			this.statementsStack.peek().addToken("$NUMBER");
+		}
+
+		return false;
 	}
 
 	@Override
@@ -378,52 +810,143 @@ public class JMCVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(final ParameterizedType node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			node.getType().accept(this);
+			this.statementsStack.peek().addToken(JToken.LEFTANGLEBRACKET.value);
+			this.addTokens(this.statementsStack.peek(), node.typeArguments());
+			this.statementsStack.peek()
+					.addToken(JToken.RIGHTANGLEBRACKET.value);
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final ParenthesizedExpression node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			this.statementsStack.peek().addToken(JToken.LEFTPAREN.value);
+			node.getExpression().accept(this);
+			this.statementsStack.peek().addToken(JToken.RIGHTPAREN.value);
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final PostfixExpression node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			node.getOperand().accept(this);
+			final PostfixExpression.Operator operator = node.getOperator();
+			this.statementsStack.peek().addToken(operator.toString());
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final PrefixExpression node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			final PrefixExpression.Operator operator = node.getOperator();
+			if (!operator.toString().equals("-")
+					&& !operator.toString().equals("+")) {
+				this.statementsStack.peek().addToken(operator.toString());
+			}
+			node.getOperand().accept(this);
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final PrimitiveType node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			final String type = node.getPrimitiveTypeCode().toString();
+			this.statementsStack.peek().addToken(type);
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final QualifiedName node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			final String identifier = node.getFullyQualifiedName();
+			String normalizedName = this.variablesStack.peek().get(identifier);
+			if (null == normalizedName) {
+				normalizedName = "$V" + this.variablesStack.peek().size();
+				this.variablesStack.peek().put(identifier, normalizedName);
+			}
+			this.statementsStack.peek().addToken(normalizedName);
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final QualifiedType node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			node.getQualifier().accept(this);
+			this.statementsStack.peek().addToken(JToken.DOT.value);
+			final String type = node.getName().toString();
+			this.statementsStack.peek().addToken(type);
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final ReturnStatement node) {
-		return super.visit(node);
+		final JMethod method = this.methodsStack.peek();
+		final int line = getFromLineNumber(node);
+		final JStatement statement = new JStatement(method.id, line);
+		this.statementsStack.push(statement);
+		this.variablesStack.push(new HashMap<String, String>());
+
+		statement.addToken(JToken.RETURN.value);
+		if (null != node.getExpression()) {
+			node.getExpression().accept(this);
+		}
+		statement.addToken(JToken.SEMICOLON.value);
+
+		this.statementsStack.pop();
+		this.variablesStack.pop();
+		method.addStatement(statement);
+		if (JMCConfig.getInstance().isDEBUG()) {
+			System.out.println("return statement: " + statement.getText());
+		}
+		return false;
 	}
 
 	@Override
 	public boolean visit(final SimpleName node) {
-		return super.visit(node);
+		if (!this.statementsStack.isEmpty()) {
+			final String identifier = node.getIdentifier();
+			String normalizedName = this.variablesStack.peek().get(identifier);
+			if (null == normalizedName) {
+				normalizedName = "$V" + this.variablesStack.peek().size();
+				this.variablesStack.peek().put(identifier, normalizedName);
+			}
+			this.statementsStack.peek().addToken(normalizedName);
+		}
+		return false;
 	}
 
 	@Override
 	public boolean visit(final SimpleType node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			final String type = node.getName().toString();
+			this.statementsStack.peek().addToken(type);
+		}
+
+		return false;
 	}
 
 	@Override
@@ -433,27 +956,79 @@ public class JMCVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(final SingleVariableDeclaration node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			node.getType().accept(this);
+			node.getName().accept(this);
+			if (null != node.getInitializer()) {
+				this.statementsStack.peek().addToken("=");
+				node.getInitializer().accept(this);
+			}
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final StringLiteral node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			this.statementsStack.peek().addToken("$STRING");
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final SuperConstructorInvocation node) {
-		return super.visit(node);
+
+		final JMethod method = this.methodsStack.peek();
+		final int line = getFromLineNumber(node);
+		final JStatement statement = new JStatement(method.id, line);
+		this.statementsStack.push(statement);
+		this.variablesStack.push(new HashMap<String, String>());
+
+		statement.addToken(JToken.SUPER.value);
+		statement.addToken(JToken.LEFTPAREN.value);
+		this.addTokens(this.statementsStack.peek(), node.arguments());
+		statement.addToken(JToken.RIGHTPAREN.value);
+		statement.addToken(JToken.SEMICOLON.value);
+
+		this.statementsStack.pop();
+		this.variablesStack.pop();
+		method.addStatement(statement);
+		if (JMCConfig.getInstance().isDEBUG()) {
+			this.print("super constructorinvocation", statement);
+		}
+		return false;
 	}
 
 	@Override
 	public boolean visit(final SuperFieldAccess node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			this.statementsStack.peek().addToken(JToken.SUPER.value);
+			this.statementsStack.peek().addToken(JToken.DOT.value);
+			node.getName().accept(this);
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final SuperMethodInvocation node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			this.statementsStack.peek().addToken(JToken.SUPER.value);
+			this.statementsStack.peek().addToken(JToken.DOT.value);
+			final String name = node.getName().getIdentifier();
+			this.statementsStack.peek().addToken(name);
+			this.statementsStack.peek().addToken(JToken.LEFTPAREN.value);
+			this.addTokens(this.statementsStack.peek(), node.arguments());
+			this.statementsStack.peek().addToken(JToken.LEFTPAREN.value);
+		}
+
+		return false;
 	}
 
 	@Override
@@ -463,17 +1038,76 @@ public class JMCVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(final SwitchCase node) {
-		return super.visit(node);
+
+		final JMethod method = this.methodsStack.peek();
+		final int line = getFromLineNumber(node);
+		final JStatement statement = new JStatement(method.id, line);
+		this.statementsStack.push(statement);
+		this.variablesStack.push(new HashMap<String, String>());
+
+		if (null != node.getExpression()) {
+			statement.addToken(JToken.CASE.value);
+			node.getExpression().accept(this);
+		} else {
+			statement.addToken(JToken.DEFAULT.value);
+		}
+		statement.addToken(JToken.COLON.value);
+
+		this.statementsStack.pop();
+		this.variablesStack.pop();
+		method.addStatement(statement);
+		if (JMCConfig.getInstance().isDEBUG()) {
+			this.print("switch case", statement);
+		}
+		return false;
 	}
 
 	@Override
 	public boolean visit(final SwitchStatement node) {
-		return super.visit(node);
+
+		final JMethod method = this.methodsStack.peek();
+		final int line = getFromLineNumber(node);
+		final JStatement statement = new JStatement(method.id, line);
+		this.statementsStack.push(statement);
+		this.variablesStack.push(new HashMap<String, String>());
+
+		node.getExpression().accept(this);
+
+		this.statementsStack.pop();
+		this.variablesStack.pop();
+		method.addStatement(statement);
+		if (JMCConfig.getInstance().isDEBUG()) {
+			this.print("switch conditional expression", statement);
+		}
+
+		for (final Object o : node.statements()) {
+			((ASTNode) o).accept(this);
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final SynchronizedStatement node) {
-		return super.visit(node);
+
+		final JMethod method = this.methodsStack.peek();
+		final int line = getFromLineNumber(node);
+		final JStatement statement = new JStatement(method.id, line);
+		this.statementsStack.push(statement);
+		this.variablesStack.push(new HashMap<String, String>());
+
+		node.getExpression().accept(this);
+
+		this.statementsStack.pop();
+		this.variablesStack.pop();
+		method.addStatement(statement);
+		if (JMCConfig.getInstance().isDEBUG()) {
+			this.print("synchronized conditional expression", statement);
+		}
+
+		node.getBody().accept(this);
+
+		return false;
 	}
 
 	@Override
@@ -488,12 +1122,35 @@ public class JMCVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(final ThisExpression node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			this.statementsStack.peek().addToken(JToken.THIS.value);
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final ThrowStatement node) {
-		return super.visit(node);
+		final JMethod method = this.methodsStack.peek();
+		final int line = getFromLineNumber(node);
+		final JStatement statement = new JStatement(method.id, line);
+		this.statementsStack.push(statement);
+		this.variablesStack.push(new HashMap<String, String>());
+
+		statement.addToken(JToken.THROW.value);
+		if (null != node.getExpression()) {
+			node.getExpression().accept(this);
+		}
+		statement.addToken(JToken.SEMICOLON.value);
+
+		this.statementsStack.pop();
+		this.variablesStack.pop();
+		method.addStatement(statement);
+		if (JMCConfig.getInstance().isDEBUG()) {
+			this.print("throw statement", statement);
+		}
+		return false;
 	}
 
 	@Override
@@ -513,7 +1170,14 @@ public class JMCVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(final TypeLiteral node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			node.getType().accept(this);
+			this.statementsStack.peek().addToken(JToken.DOT.value);
+			this.statementsStack.peek().addToken(JToken.CLASS.value);
+		}
+
+		return false;
 	}
 
 	@Override
@@ -528,32 +1192,122 @@ public class JMCVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(final UnionType node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			this.addTokens(this.statementsStack.peek(), node.types());
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final VariableDeclarationExpression node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			node.getType().accept(this);
+			this.addTokens(this.statementsStack.peek(), node.fragments());
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final VariableDeclarationFragment node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			node.getName().accept(this);
+			if (null != node.getInitializer()) {
+				this.statementsStack.peek().addToken("=");
+				node.getInitializer().accept(this);
+			}
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final VariableDeclarationStatement node) {
-		return super.visit(node);
+
+		final JMethod method = this.methodsStack.peek();
+		final int line = getFromLineNumber(node);
+		final JStatement statement = new JStatement(method.id, line);
+		this.statementsStack.push(statement);
+		this.variablesStack.push(new HashMap<String, String>());
+
+		node.getType().accept(this);
+		this.addTokens(statement, node.fragments());
+		statement.addToken(JToken.SEMICOLON.value);
+
+		this.statementsStack.pop();
+		this.variablesStack.pop();
+		method.addStatement(statement);
+		if (JMCConfig.getInstance().isDEBUG()) {
+			this.print("variable declaration statement", statement);
+		}
+		return false;
 	}
 
 	@Override
 	public boolean visit(final WhileStatement node) {
-		return super.visit(node);
+
+		final JMethod method = this.methodsStack.peek();
+		final int line = getFromLineNumber(node.getExpression());
+		final JStatement statement = new JStatement(method.id, line);
+		this.statementsStack.push(statement);
+		this.variablesStack.push(new HashMap<String, String>());
+
+		node.getExpression().accept(this);
+
+		this.statementsStack.pop();
+		this.variablesStack.pop();
+		method.addStatement(statement);
+		if (JMCConfig.getInstance().isDEBUG()) {
+			this.print("while conditional expression", statement);
+		}
+
+		if (null != node.getBody()) {
+			node.getBody().accept(this);
+		}
+
+		return false;
 	}
 
 	@Override
 	public boolean visit(final WildcardType node) {
-		return super.visit(node);
+
+		if (!this.statementsStack.isEmpty()) {
+			this.statementsStack.peek().addToken("?");
+		}
+
+		return false;
 	}
 
+	private int getFromLineNumber(final ASTNode node) {
+		return this.root.getLineNumber(node.getStartPosition());
+	}
+
+	private int getToLineNumber(final ASTNode node) {
+		return this.root.getLineNumber(node.getStartPosition()
+				+ node.getLength());
+	}
+
+	private void print(final String prefix, final JStatement statement) {
+		System.out.println(statement.line + " " + prefix + ": "
+				+ statement.getText());
+	}
+
+	private void addTokens(final JStatement statement, final List list) {
+
+		if (list.isEmpty()) {
+			return;
+		}
+
+		final ASTNode node = (ASTNode) list.get(0);
+		node.accept(this);
+
+		for (int i = 1; i < list.size(); i++) {
+			statement.addToken(JToken.COMMA.value);
+			((ASTNode) list.get(i)).accept(this);
+		}
+	}
 }

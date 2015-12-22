@@ -1,9 +1,10 @@
 package yoshikihigo.jmc;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
@@ -16,6 +17,11 @@ import yoshikihigo.jmc.data.JMethod;
 import yoshikihigo.jmc.data.JStatement;
 
 public class MethodParseThread extends Thread {
+
+	final static public List<String> READ_FAILED_FILES = Collections
+			.synchronizedList(new ArrayList<>());
+	final static public List<String> PARSE_FAILED_FILES = Collections
+			.synchronizedList(new ArrayList<>());
 
 	final public String file;
 	final BlockingQueue<JMethod> mQueue;
@@ -30,23 +36,34 @@ public class MethodParseThread extends Thread {
 
 	@Override
 	public void run() {
+
 		List<String> lines = null;
 		try {
-			System.out.println(this.file);
 			lines = Files.readAllLines(Paths.get(this.file),
 					StandardCharsets.UTF_8);
-		} catch (final IOException e) {
-			e.printStackTrace();
-		}
-
-		if (null == lines) {
+		} catch (final Exception e) {
+			READ_FAILED_FILES.add(this.file);
 			return;
 		}
 
 		final ASTParser parser = ASTParser.newParser(AST.JLS8);
 		parser.setSource(String.join(System.lineSeparator(), lines)
 				.toCharArray());
-		final CompilationUnit unit = (CompilationUnit) parser
-				.createAST(new NullProgressMonitor());
+
+		CompilationUnit unit = null;
+		try {
+			unit = (CompilationUnit) parser
+					.createAST(new NullProgressMonitor());
+		} catch (final Exception e) {
+			PARSE_FAILED_FILES.add(this.file);
+			return;
+		}
+
+		final JMCVisitor visitor = new JMCVisitor(file, unit);
+		unit.accept(visitor);
+		final List<JMethod> methods = visitor.getMethods();
+//		this.mQueue.addAll(methods);
+//		methods.stream().forEach(
+//				method -> this.sQueue.addAll(method.getStatements()));
 	}
 }

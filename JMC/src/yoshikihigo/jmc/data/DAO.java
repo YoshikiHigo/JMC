@@ -38,7 +38,7 @@ public class DAO {
 			this.methodsPS = this.connector
 					.prepareStatement("insert into methods values (?, ?, ?, ?)");
 			this.statementsPS = this.connector
-					.prepareStatement("insert into changes values(?, ?, ?)");
+					.prepareStatement("insert into statements values(?, ?, ?, ?)");
 
 			this.numberOfMethods = 0;
 			this.numberOfStatements = 0;
@@ -52,9 +52,10 @@ public class DAO {
 	public void registerMethod(final JMethod method) {
 
 		try {
-			this.methodsPS.setString(1, method.file);
-			this.methodsPS.setInt(2, method.fromLine);
-			this.methodsPS.setInt(3, method.toLine);
+			this.methodsPS.setInt(1, method.id);
+			this.methodsPS.setString(2, method.file);
+			this.methodsPS.setInt(3, method.fromLine);
+			this.methodsPS.setInt(4, method.toLine);
 			this.methodsPS.addBatch();
 			this.numberOfMethods++;
 
@@ -80,9 +81,10 @@ public class DAO {
 	public void registerStatement(final JStatement statement) {
 
 		try {
-			this.statementsPS.setInt(1, statement.methodID);
-			this.statementsPS.setBytes(2, statement.hash);
-			this.statementsPS.setInt(3, statement.line);
+			this.statementsPS.setInt(1, statement.id);
+			this.statementsPS.setInt(2, statement.methodID);
+			this.statementsPS.setBytes(3, statement.getHash());
+			this.statementsPS.setInt(4, statement.line);
 			this.statementsPS.addBatch();
 			this.numberOfStatements++;
 

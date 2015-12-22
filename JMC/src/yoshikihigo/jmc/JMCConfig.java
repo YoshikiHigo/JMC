@@ -53,6 +53,13 @@ public class JMCConfig {
 			options.addOption(verbose);
 		}
 
+		{
+			final Option debug = new Option("debug", "debug", false,
+					"print some informlation for debugging");
+			debug.setRequired(false);
+			options.addOption(debug);
+		}
+
 		try {
 			final CommandLineParser parser = new PosixParser();
 			final CommandLine commandLine = parser.parse(options, args);
@@ -94,7 +101,7 @@ public class JMCConfig {
 			System.err.println("option \"db\" is not specified.");
 			System.exit(0);
 		}
-		return this.commandLine.getOptionValue("src");
+		return this.commandLine.getOptionValue("db");
 	}
 
 	public int getTHREAD() {
@@ -104,5 +111,9 @@ public class JMCConfig {
 
 	public boolean isVERBOSE() {
 		return this.commandLine.hasOption("v");
+	}
+
+	public boolean isDEBUG() {
+		return this.commandLine.hasOption("debug");
 	}
 }

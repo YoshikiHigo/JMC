@@ -19,15 +19,31 @@ public class JMCRegister {
 
 		JMCConfig.initialize(args);
 
+		final long timeToStart = System.nanoTime();
 		final String directory = JMCConfig.getInstance().getSOURCE();
 		final List<File> files = getJavaFiles(new File(directory));
 		parseJavaFiles(files);
+		final long timeToEnd = System.nanoTime();
+
+		System.out.println("read failed files:");
+		MethodParseThread.READ_FAILED_FILES.stream().forEach(
+				file -> System.out.println(file));
+
+		System.out.println("parse failed files:");
+		MethodParseThread.PARSE_FAILED_FILES.stream().forEach(
+				file -> System.out.println(file));
+
+		System.out.print("execution time: ");
+		System.out.println(TimingUtility.getExecutionTime(timeToStart,
+				timeToEnd));
 	}
 
 	private static List<File> getJavaFiles(final File file) {
 		final List<File> files = new ArrayList<>();
-		if (file.isFile() && file.getName().endsWith(".java")) {
-			files.add(file);
+		if (file.isFile()) {
+			if (file.getName().endsWith(".java")) {
+				files.add(file);
+			}
 		} else if (file.isDirectory()) {
 			for (final File child : file.listFiles()) {
 				files.addAll(getJavaFiles(child));
@@ -41,38 +57,41 @@ public class JMCRegister {
 
 	private static void parseJavaFiles(final List<File> files) {
 
-		final BlockingQueue<JMethod> mQueue = new ArrayBlockingQueue<>(100000,
+		final BlockingQueue<JMethod> mQueue = new ArrayBlockingQueue<>(1000000,
 				true);
 		final BlockingQueue<JStatement> sQueue = new ArrayBlockingQueue<>(
-				100000, true);
+				1000000, true);
 
-		final MethodRegisterThread registerThread = new MethodRegisterThread(
-				mQueue, sQueue);
+		final ExecutorService registerThreadPool = Executors
+				.newSingleThreadExecutor();
+		final MethodRegisterThread rThread = new MethodRegisterThread(mQueue,
+				sQueue);
+		final Future<?> rFuture = registerThreadPool.submit(rThread);
 
-		final ExecutorService executorService = Executors
+		final ExecutorService parserThreadPool = Executors
 				.newFixedThreadPool(JMCConfig.getInstance().getTHREAD());
-		final List<Future<?>> futures = new ArrayList<>();
+		final List<Future<?>> pFutures = new ArrayList<>();
 
 		files.stream().forEach(
 				file -> {
-					final Future<?> future = executorService
+					final Future<?> future = parserThreadPool
 							.submit(new MethodParseThread(file
 									.getAbsolutePath(), mQueue, sQueue));
-					futures.add(future);
+					pFutures.add(future);
 				});
 
 		try {
-			for (final Future<?> future : futures) {
+			for (final Future<?> future : pFutures) {
 				future.get();
 			}
-			registerThread.finish();
-			registerThread.join();
+			rThread.finish();
+			rFuture.get();
 		} catch (final ExecutionException | InterruptedException e) {
 			e.printStackTrace();
 			System.exit(0);
 		} finally {
-			executorService.shutdown();
+			registerThreadPool.shutdown();
+			parserThreadPool.shutdown();
 		}
-
 	}
 }
