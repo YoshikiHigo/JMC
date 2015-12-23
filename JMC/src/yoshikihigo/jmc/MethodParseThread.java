@@ -7,12 +7,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 
+import yoshikihigo.jmc.data.DAO;
 import yoshikihigo.jmc.data.JMethod;
 import yoshikihigo.jmc.data.JStatement;
 
@@ -62,6 +64,13 @@ public class MethodParseThread extends Thread {
 		final JMCVisitor visitor = new JMCVisitor(file, unit);
 		unit.accept(visitor);
 		final List<JMethod> methods = visitor.getMethods();
+		final List<JStatement> statements = methods.stream()
+				.flatMap(method -> method.getStatements().stream())
+				.collect(Collectors.toList());
+
+		DAO.SINGLETON.registerMethods(methods);
+		DAO.SINGLETON.registerStatements(statements);
+		
 //		this.mQueue.addAll(methods);
 //		methods.stream().forEach(
 //				method -> this.sQueue.addAll(method.getStatements()));

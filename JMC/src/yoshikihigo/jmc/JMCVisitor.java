@@ -328,7 +328,7 @@ public class JMCVisitor extends ASTVisitor {
 		this.variablesStack.pop();
 		method.addStatement(statement);
 		if (JMCConfig.getInstance().isDEBUG()) {
-			System.out.println("catch clause: " + statement.getText());
+			this.print("catch clause", statement);
 		}
 
 		node.getBody().accept(this);
@@ -919,7 +919,7 @@ public class JMCVisitor extends ASTVisitor {
 		this.variablesStack.pop();
 		method.addStatement(statement);
 		if (JMCConfig.getInstance().isDEBUG()) {
-			System.out.println("return statement: " + statement.getText());
+			this.print("return statement", statement);
 		}
 		return false;
 	}
@@ -1025,7 +1025,7 @@ public class JMCVisitor extends ASTVisitor {
 			this.statementsStack.peek().addToken(name);
 			this.statementsStack.peek().addToken(JToken.LEFTPAREN.value);
 			this.addTokens(this.statementsStack.peek(), node.arguments());
-			this.statementsStack.peek().addToken(JToken.LEFTPAREN.value);
+			this.statementsStack.peek().addToken(JToken.RIGHTPAREN.value);
 		}
 
 		return false;

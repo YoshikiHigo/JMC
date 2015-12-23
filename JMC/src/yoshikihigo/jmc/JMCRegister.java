@@ -10,6 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import yoshikihigo.jmc.data.DAO;
 import yoshikihigo.jmc.data.JMethod;
 import yoshikihigo.jmc.data.JStatement;
 
@@ -62,12 +63,13 @@ public class JMCRegister {
 		final BlockingQueue<JStatement> sQueue = new ArrayBlockingQueue<>(
 				1000000, true);
 
-		final ExecutorService registerThreadPool = Executors
-				.newSingleThreadExecutor();
-		final MethodRegisterThread rThread = new MethodRegisterThread(mQueue,
-				sQueue);
-		final Future<?> rFuture = registerThreadPool.submit(rThread);
+		// final ExecutorService registerThreadPool = Executors
+		// .newSingleThreadExecutor();
+		// final MethodRegisterThread rThread = new MethodRegisterThread(mQueue,
+		// sQueue);
+		// final Future<?> rFuture = registerThreadPool.submit(rThread);
 
+		DAO.SINGLETON.initialize();
 		final ExecutorService parserThreadPool = Executors
 				.newFixedThreadPool(JMCConfig.getInstance().getTHREAD());
 		final List<Future<?>> pFutures = new ArrayList<>();
@@ -84,13 +86,16 @@ public class JMCRegister {
 			for (final Future<?> future : pFutures) {
 				future.get();
 			}
-			rThread.finish();
-			rFuture.get();
+			// rThread.finish();
+			// rFuture.get();
+			DAO.SINGLETON.flush();
+			DAO.SINGLETON.addIndices();
+			DAO.SINGLETON.close();
 		} catch (final ExecutionException | InterruptedException e) {
 			e.printStackTrace();
 			System.exit(0);
 		} finally {
-			registerThreadPool.shutdown();
+			// registerThreadPool.shutdown();
 			parserThreadPool.shutdown();
 		}
 	}

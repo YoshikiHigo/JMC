@@ -25,29 +25,27 @@ public class MethodRegisterThread extends Thread {
 	public void run() {
 
 		try {
-			final DAO dao = new DAO();
-
 			final List<JMethod> methods = new ArrayList<>();
 			final List<JStatement> statements = new ArrayList<>();
 			while (!this.finished) {
 				if (0 < this.mQueue.size()) {
 					this.mQueue.drainTo(methods);
-					dao.registerMethods(methods);
+					DAO.SINGLETON.registerMethods(methods);
 					methods.clear();
 				}
 				if (0 < this.sQueue.size()) {
 					this.sQueue.drainTo(statements);
-					dao.registerStatements(statements);
+					DAO.SINGLETON.registerStatements(statements);
 					statements.clear();
 				}
 			}
 
 			this.mQueue.drainTo(methods);
-			dao.registerMethods(methods);
+			DAO.SINGLETON.registerMethods(methods);
 			this.sQueue.drainTo(statements);
-			dao.registerStatements(statements);
-			dao.flush();
-			dao.close();
+			DAO.SINGLETON.registerStatements(statements);
+			DAO.SINGLETON.flush();
+			DAO.SINGLETON.close();
 		}
 
 		catch (final Exception e) {

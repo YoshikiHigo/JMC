@@ -13,6 +13,7 @@ public class DAO {
 
 	static public final String METHODS_SCHEMA = "id integer primary key, file string, fromline integer, toline integer";
 	static public final String STATEMENTS_SCHEMA = "id integer primary key, methodID integer, hash blob, line integer";
+	static public final DAO SINGLETON = new DAO();
 
 	private Connection connector;
 	private PreparedStatement methodsPS;
@@ -20,7 +21,10 @@ public class DAO {
 	private int numberOfMethods;
 	private int numberOfStatements;
 
-	public DAO() {
+	private DAO() {
+	}
+
+	public void initialize() {
 
 		try {
 			Class.forName("org.sqlite.JDBC");
@@ -42,6 +46,7 @@ public class DAO {
 
 			this.numberOfMethods = 0;
 			this.numberOfStatements = 0;
+			this.connector.setAutoCommit(false);
 
 		} catch (final ClassNotFoundException | SQLException e) {
 			e.printStackTrace();
@@ -49,7 +54,7 @@ public class DAO {
 		}
 	}
 
-	public void registerMethod(final JMethod method) {
+	synchronized public void registerMethod(final JMethod method) {
 
 		try {
 			this.methodsPS.setInt(1, method.id);
@@ -64,6 +69,7 @@ public class DAO {
 					System.out.println("writing \'methods\' table ...");
 				}
 				this.methodsPS.executeBatch();
+				this.connector.commit();
 				this.numberOfMethods = 0;
 			}
 		}
@@ -74,11 +80,11 @@ public class DAO {
 		}
 	}
 
-	public void registerMethods(final Collection<JMethod> methods) {
+	synchronized public void registerMethods(final Collection<JMethod> methods) {
 		methods.stream().forEach(method -> this.registerMethod(method));
 	}
 
-	public void registerStatement(final JStatement statement) {
+	synchronized public void registerStatement(final JStatement statement) {
 
 		try {
 			this.statementsPS.setInt(1, statement.id);
@@ -93,6 +99,7 @@ public class DAO {
 					System.out.println("writing \'statements\' table ...");
 				}
 				this.statementsPS.executeBatch();
+				this.connector.commit();
 				this.numberOfStatements = 0;
 			}
 		}
@@ -103,18 +110,20 @@ public class DAO {
 		}
 	}
 
-	public void registerStatements(final Collection<JStatement> statements) {
+	synchronized public void registerStatements(
+			final Collection<JStatement> statements) {
 		statements.stream().forEach(
 				statement -> this.registerStatement(statement));
 	}
 
-	public void flush() {
+	synchronized public void flush() {
 		try {
 			if (0 < this.numberOfMethods) {
 				if (JMCConfig.getInstance().isVERBOSE()) {
 					System.out.println("writing \'methods\' table ...");
 				}
 				this.methodsPS.executeBatch();
+				this.connector.commit();
 				this.numberOfMethods = 0;
 			}
 			if (0 < this.numberOfStatements) {
@@ -122,6 +131,7 @@ public class DAO {
 					System.out.println("writing \'statements\' table ...");
 				}
 				this.statementsPS.executeBatch();
+				this.connector.commit();
 				this.numberOfStatements = 0;
 			}
 
@@ -131,7 +141,22 @@ public class DAO {
 		}
 	}
 
-	public void close() {
+	synchronized public void addIndices() {
+		try {
+			final Statement statement = this.connector.createStatement();
+			statement
+					.executeUpdate("create index index_file_methods on methods(file)");
+			statement
+					.executeUpdate("create index index_hash_statements on statements(hash)");
+			statement
+					.executeUpdate("create index index_methodID_statements on statements(methodID)");
+			statement.close();
+		} catch (final SQLException e) {
+			e.printStackTrace();
+		}
+	}
+
+	synchronized public void close() {
 		try {
 			this.methodsPS.close();
 			this.statementsPS.close();

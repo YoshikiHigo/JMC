@@ -15,5 +15,6 @@
 	<classpathentry kind="lib" path="lib/commons-cli-1.2/commons-cli-1.2.jar"/>
 	<classpathentry kind="lib" path="lib/sqlite-jdbc-3.8.10.1/sqlite-jdbc-3.8.10.1.jar"/>
 	<classpathentry kind="lib" path="lib/JDT-eclipse-4.5.1/org.eclipse.text_3.5.400.v20150505-1044.jar"/>
+	<classpathentry kind="lib" path="lib/mysql-connector-java-5.1.38/mysql-connector-java-5.1.38-bin.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
