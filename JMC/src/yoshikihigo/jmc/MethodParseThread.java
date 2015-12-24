@@ -6,7 +6,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.NullProgressMonitor;
@@ -26,14 +25,9 @@ public class MethodParseThread extends Thread {
 			.synchronizedList(new ArrayList<>());
 
 	final public String file;
-	final BlockingQueue<JMethod> mQueue;
-	final BlockingQueue<JStatement> sQueue;
 
-	MethodParseThread(final String file, final BlockingQueue<JMethod> mQueue,
-			final BlockingQueue<JStatement> sQueue) {
+	MethodParseThread(final String file) {
 		this.file = file;
-		this.mQueue = mQueue;
-		this.sQueue = sQueue;
 	}
 
 	@Override
@@ -70,9 +64,5 @@ public class MethodParseThread extends Thread {
 
 		DAO.SINGLETON.registerMethods(methods);
 		DAO.SINGLETON.registerStatements(statements);
-		
-//		this.mQueue.addAll(methods);
-//		methods.stream().forEach(
-//				method -> this.sQueue.addAll(method.getStatements()));
 	}
 }

@@ -3,16 +3,12 @@ package yoshikihigo.jmc;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import yoshikihigo.jmc.data.DAO;
-import yoshikihigo.jmc.data.JMethod;
-import yoshikihigo.jmc.data.JStatement;
 
 public class JMCRegister {
 
@@ -57,18 +53,6 @@ public class JMCRegister {
 	}
 
 	private static void parseJavaFiles(final List<File> files) {
-
-		final BlockingQueue<JMethod> mQueue = new ArrayBlockingQueue<>(1000000,
-				true);
-		final BlockingQueue<JStatement> sQueue = new ArrayBlockingQueue<>(
-				1000000, true);
-
-		// final ExecutorService registerThreadPool = Executors
-		// .newSingleThreadExecutor();
-		// final MethodRegisterThread rThread = new MethodRegisterThread(mQueue,
-		// sQueue);
-		// final Future<?> rFuture = registerThreadPool.submit(rThread);
-
 		DAO.SINGLETON.initialize();
 		final ExecutorService parserThreadPool = Executors
 				.newFixedThreadPool(JMCConfig.getInstance().getTHREAD());
@@ -78,7 +62,7 @@ public class JMCRegister {
 				file -> {
 					final Future<?> future = parserThreadPool
 							.submit(new MethodParseThread(file
-									.getAbsolutePath(), mQueue, sQueue));
+									.getAbsolutePath()));
 					pFutures.add(future);
 				});
 
@@ -86,8 +70,6 @@ public class JMCRegister {
 			for (final Future<?> future : pFutures) {
 				future.get();
 			}
-			// rThread.finish();
-			// rFuture.get();
 			DAO.SINGLETON.flush();
 			DAO.SINGLETON.addIndices();
 			DAO.SINGLETON.close();

@@ -150,6 +150,7 @@ public class DAO {
 					.executeUpdate("create index index_hash_statements on statements(hash)");
 			statement
 					.executeUpdate("create index index_methodID_statements on statements(methodID)");
+			this.connector.commit();
 			statement.close();
 		} catch (final SQLException e) {
 			e.printStackTrace();
