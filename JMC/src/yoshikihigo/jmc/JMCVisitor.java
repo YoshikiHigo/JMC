@@ -104,9 +104,9 @@ import org.eclipse.jdt.core.dom.WildcardType;
 
 import yoshikihigo.jmc.data.JMethod;
 import yoshikihigo.jmc.data.JStatement;
-import yoshikihigo.jmc.data.JToken;
+import yoshikihigo.jmc.data.JavaKeyword;
 
-public class JMCVisitor extends ASTVisitor {
+public class JMCVisitor extends ASTVisitor implements JavaKeyword {
 
 	final private String file;
 	final private CompilationUnit root;
@@ -152,11 +152,9 @@ public class JMCVisitor extends ASTVisitor {
 
 		if (!this.statementsStack.isEmpty()) {
 			node.getArray().accept(this);
-			this.statementsStack.peek()
-					.addToken(JToken.LEFTSQUAREBRACKET.value);
+			this.statementsStack.peek().addToken(LEFTSQUAREBRACKET);
 			node.getIndex().accept(this);
-			this.statementsStack.peek().addToken(
-					JToken.RIGHTSQUAREBRACKET.value);
+			this.statementsStack.peek().addToken(RIGHTSQUAREBRACKET);
 		}
 
 		return false;
@@ -166,16 +164,14 @@ public class JMCVisitor extends ASTVisitor {
 	public boolean visit(final ArrayCreation node) {
 
 		if (!this.statementsStack.isEmpty()) {
-			this.statementsStack.peek().addToken(JToken.NEW.value);
+			this.statementsStack.peek().addToken(NEW);
 
 			if (null == node.getInitializer()) {
 				node.getType().getElementType().accept(this);
 				for (final Object o : node.dimensions()) {
-					this.statementsStack.peek().addToken(
-							JToken.LEFTSQUAREBRACKET.value);
+					this.statementsStack.peek().addToken(LEFTSQUAREBRACKET);
 					((ASTNode) o).accept(this);
-					this.statementsStack.peek().addToken(
-							JToken.RIGHTSQUAREBRACKET.value);
+					this.statementsStack.peek().addToken(RIGHTSQUAREBRACKET);
 				}
 			}
 
@@ -192,9 +188,9 @@ public class JMCVisitor extends ASTVisitor {
 	public boolean visit(final ArrayInitializer node) {
 
 		if (!this.statementsStack.isEmpty()) {
-			this.statementsStack.peek().addToken(JToken.LEFTBRACKET.value);
+			this.statementsStack.peek().addToken(LEFTBRACKET);
 			this.addTokens(this.statementsStack.peek(), node.expressions());
-			this.statementsStack.peek().addToken(JToken.RIGHTBRACKET.value);
+			this.statementsStack.peek().addToken(RIGHTBRACKET);
 		}
 
 		return false;
@@ -206,10 +202,8 @@ public class JMCVisitor extends ASTVisitor {
 		if (!this.statementsStack.isEmpty()) {
 			node.getElementType().accept(this);
 			for (int i = 0; i < node.getDimensions(); i++) {
-				this.statementsStack.peek().addToken(
-						JToken.LEFTSQUAREBRACKET.value);
-				this.statementsStack.peek().addToken(
-						JToken.RIGHTSQUAREBRACKET.value);
+				this.statementsStack.peek().addToken(LEFTSQUAREBRACKET);
+				this.statementsStack.peek().addToken(RIGHTSQUAREBRACKET);
 			}
 		}
 
@@ -225,11 +219,11 @@ public class JMCVisitor extends ASTVisitor {
 		this.statementsStack.push(statement);
 		this.variablesStack.push(new HashMap<String, String>());
 
-		statement.addToken(JToken.ASSERT.value);
+		statement.addToken(ASSERT);
 		node.getExpression().accept(this);
-		statement.addToken(JToken.COLON.value);
+		statement.addToken(COLON);
 		node.getMessage().accept(this);
-		statement.addToken(JToken.SEMICOLON.value);
+		statement.addToken(SEMICOLON);
 
 		this.statementsStack.pop();
 		this.variablesStack.pop();
@@ -282,11 +276,11 @@ public class JMCVisitor extends ASTVisitor {
 		this.statementsStack.push(statement);
 		this.variablesStack.push(new HashMap<String, String>());
 
-		statement.addToken(JToken.BREAK.value);
+		statement.addToken(BREAK);
 		if (null != node.getLabel()) {
 			node.getLabel().accept(this);
 		}
-		statement.addToken(JToken.SEMICOLON.value);
+		statement.addToken(SEMICOLON);
 
 		this.statementsStack.pop();
 		this.variablesStack.pop();
@@ -301,9 +295,9 @@ public class JMCVisitor extends ASTVisitor {
 	public boolean visit(final CastExpression node) {
 
 		if (!this.statementsStack.isEmpty()) {
-			this.statementsStack.peek().addToken(JToken.LEFTPAREN.value);
+			this.statementsStack.peek().addToken(LEFTPAREN);
 			node.getType().accept(this);
-			this.statementsStack.peek().addToken(JToken.RIGHTPAREN.value);
+			this.statementsStack.peek().addToken(RIGHTPAREN);
 			node.getExpression().accept(this);
 		}
 
@@ -319,10 +313,10 @@ public class JMCVisitor extends ASTVisitor {
 		this.statementsStack.push(statement);
 		this.variablesStack.push(new HashMap<String, String>());
 
-		statement.addToken(JToken.CATCH.value);
-		statement.addToken(JToken.LEFTPAREN.value);
+		statement.addToken(CATCH);
+		statement.addToken(LEFTPAREN);
 		node.getException().accept(this);
-		statement.addToken(JToken.RIGHTPAREN.value);
+		statement.addToken(RIGHTPAREN);
 
 		this.statementsStack.pop();
 		this.variablesStack.pop();
@@ -350,11 +344,11 @@ public class JMCVisitor extends ASTVisitor {
 	public boolean visit(final ClassInstanceCreation node) {
 
 		if (!this.statementsStack.isEmpty()) {
-			this.statementsStack.peek().addToken(JToken.NEW.value);
+			this.statementsStack.peek().addToken(NEW);
 			node.getType().accept(this);
-			this.statementsStack.peek().addToken(JToken.LEFTPAREN.value);
+			this.statementsStack.peek().addToken(LEFTPAREN);
 			this.addTokens(this.statementsStack.peek(), node.arguments());
-			this.statementsStack.peek().addToken(JToken.RIGHTPAREN.value);
+			this.statementsStack.peek().addToken(RIGHTPAREN);
 		}
 
 		return false;
@@ -370,9 +364,9 @@ public class JMCVisitor extends ASTVisitor {
 
 		if (!this.statementsStack.isEmpty()) {
 			node.getExpression().accept(this);
-			this.statementsStack.peek().addToken(JToken.HATENA.value);
+			this.statementsStack.peek().addToken(HATENA);
 			node.getThenExpression().accept(this);
-			this.statementsStack.peek().addToken(JToken.COLON.value);
+			this.statementsStack.peek().addToken(COLON);
 			node.getElseExpression().accept(this);
 		}
 
@@ -388,11 +382,11 @@ public class JMCVisitor extends ASTVisitor {
 		this.statementsStack.push(statement);
 		this.variablesStack.push(new HashMap<String, String>());
 
-		this.statementsStack.peek().addToken(JToken.THIS.value);
-		this.statementsStack.peek().addToken(JToken.LEFTPAREN.value);
+		this.statementsStack.peek().addToken(THIS);
+		this.statementsStack.peek().addToken(LEFTPAREN);
 		this.addTokens(this.statementsStack.peek(), node.arguments());
-		this.statementsStack.peek().addToken(JToken.RIGHTPAREN.value);
-		this.statementsStack.peek().addToken(JToken.SEMICOLON.value);
+		this.statementsStack.peek().addToken(RIGHTPAREN);
+		this.statementsStack.peek().addToken(SEMICOLON);
 
 		this.statementsStack.pop();
 		this.variablesStack.pop();
@@ -412,11 +406,11 @@ public class JMCVisitor extends ASTVisitor {
 		this.statementsStack.push(statement);
 		this.variablesStack.push(new HashMap<String, String>());
 
-		statement.addToken(JToken.CONTINUE.value);
+		statement.addToken(CONTINUE);
 		if (null != node.getLabel()) {
 			node.getLabel().accept(this);
 		}
-		statement.addToken(JToken.SEMICOLON.value);
+		statement.addToken(SEMICOLON);
 
 		this.statementsStack.pop();
 		this.variablesStack.pop();
@@ -467,7 +461,7 @@ public class JMCVisitor extends ASTVisitor {
 		final JMethod method = this.methodsStack.peek();
 		final int line = getFromLineNumber(node);
 		final JStatement statement = new JStatement(method.id, line);
-		statement.addToken(JToken.SEMICOLON.value);
+		statement.addToken(SEMICOLON);
 		method.addStatement(statement);
 		return false;
 	}
@@ -482,7 +476,7 @@ public class JMCVisitor extends ASTVisitor {
 		this.variablesStack.push(new HashMap<String, String>());
 
 		node.getParameter().accept(this);
-		statement.addToken(JToken.COLON.value);
+		statement.addToken(COLON);
 		node.getExpression().accept(this);
 
 		this.statementsStack.pop();
@@ -522,7 +516,7 @@ public class JMCVisitor extends ASTVisitor {
 		this.variablesStack.push(new HashMap<String, String>());
 
 		node.getExpression().accept(this);
-		statement.addToken(JToken.SEMICOLON.value);
+		statement.addToken(SEMICOLON);
 
 		this.statementsStack.pop();
 		this.variablesStack.pop();
@@ -538,7 +532,7 @@ public class JMCVisitor extends ASTVisitor {
 
 		if (!this.statementsStack.isEmpty()) {
 			node.getExpression().accept(this);
-			this.statementsStack.peek().addToken(JToken.DOT.value);
+			this.statementsStack.peek().addToken(DOT);
 			node.getName().accept(this);
 		}
 
@@ -662,7 +656,7 @@ public class JMCVisitor extends ASTVisitor {
 
 		if (!this.statementsStack.isEmpty()) {
 			node.getLeftOperand().accept(this);
-			this.statementsStack.peek().addToken(JToken.INSTANCEOF.value);
+			this.statementsStack.peek().addToken(INSTANCEOF);
 			node.getRightOperand().accept(this);
 		}
 
@@ -689,11 +683,11 @@ public class JMCVisitor extends ASTVisitor {
 
 		if (!this.statementsStack.isEmpty()) {
 			if (node.hasParentheses()) {
-				this.statementsStack.peek().addToken(JToken.LEFTPAREN.value);
+				this.statementsStack.peek().addToken(LEFTPAREN);
 			}
 			this.addTokens(this.statementsStack.peek(), node.parameters());
 			if (node.hasParentheses()) {
-				this.statementsStack.peek().addToken(JToken.RIGHTPAREN.value);
+				this.statementsStack.peek().addToken(RIGHTPAREN);
 			}
 			this.statementsStack.peek().addToken("->");
 			node.getBody().accept(this);
@@ -746,13 +740,13 @@ public class JMCVisitor extends ASTVisitor {
 		if (!this.statementsStack.isEmpty()) {
 			if (null != node.getExpression()) {
 				node.getExpression().accept(this);
-				this.statementsStack.peek().addToken(JToken.DOT.value);
+				this.statementsStack.peek().addToken(DOT);
 			}
 			final String name = node.getName().getIdentifier();
 			this.statementsStack.peek().addToken(name);
-			this.statementsStack.peek().addToken(JToken.LEFTPAREN.value);
+			this.statementsStack.peek().addToken(LEFTPAREN);
 			this.addTokens(this.statementsStack.peek(), node.arguments());
-			this.statementsStack.peek().addToken(JToken.RIGHTPAREN.value);
+			this.statementsStack.peek().addToken(RIGHTPAREN);
 		}
 
 		return false;
@@ -787,7 +781,7 @@ public class JMCVisitor extends ASTVisitor {
 	public boolean visit(final NullLiteral node) {
 
 		if (!this.statementsStack.isEmpty()) {
-			this.statementsStack.peek().addToken(JToken.NULL.value);
+			this.statementsStack.peek().addToken(NULL);
 		}
 
 		return false;
@@ -813,10 +807,9 @@ public class JMCVisitor extends ASTVisitor {
 
 		if (!this.statementsStack.isEmpty()) {
 			node.getType().accept(this);
-			this.statementsStack.peek().addToken(JToken.LEFTANGLEBRACKET.value);
+			this.statementsStack.peek().addToken(LEFTANGLEBRACKET);
 			this.addTokens(this.statementsStack.peek(), node.typeArguments());
-			this.statementsStack.peek()
-					.addToken(JToken.RIGHTANGLEBRACKET.value);
+			this.statementsStack.peek().addToken(RIGHTANGLEBRACKET);
 		}
 
 		return false;
@@ -826,9 +819,9 @@ public class JMCVisitor extends ASTVisitor {
 	public boolean visit(final ParenthesizedExpression node) {
 
 		if (!this.statementsStack.isEmpty()) {
-			this.statementsStack.peek().addToken(JToken.LEFTPAREN.value);
+			this.statementsStack.peek().addToken(LEFTPAREN);
 			node.getExpression().accept(this);
-			this.statementsStack.peek().addToken(JToken.RIGHTPAREN.value);
+			this.statementsStack.peek().addToken(RIGHTPAREN);
 		}
 
 		return false;
@@ -893,7 +886,7 @@ public class JMCVisitor extends ASTVisitor {
 
 		if (!this.statementsStack.isEmpty()) {
 			node.getQualifier().accept(this);
-			this.statementsStack.peek().addToken(JToken.DOT.value);
+			this.statementsStack.peek().addToken(DOT);
 			final String type = node.getName().toString();
 			this.statementsStack.peek().addToken(type);
 		}
@@ -909,11 +902,11 @@ public class JMCVisitor extends ASTVisitor {
 		this.statementsStack.push(statement);
 		this.variablesStack.push(new HashMap<String, String>());
 
-		statement.addToken(JToken.RETURN.value);
+		statement.addToken(RETURN);
 		if (null != node.getExpression()) {
 			node.getExpression().accept(this);
 		}
-		statement.addToken(JToken.SEMICOLON.value);
+		statement.addToken(SEMICOLON);
 
 		this.statementsStack.pop();
 		this.variablesStack.pop();
@@ -988,11 +981,11 @@ public class JMCVisitor extends ASTVisitor {
 		this.statementsStack.push(statement);
 		this.variablesStack.push(new HashMap<String, String>());
 
-		statement.addToken(JToken.SUPER.value);
-		statement.addToken(JToken.LEFTPAREN.value);
+		statement.addToken(SUPER);
+		statement.addToken(LEFTPAREN);
 		this.addTokens(this.statementsStack.peek(), node.arguments());
-		statement.addToken(JToken.RIGHTPAREN.value);
-		statement.addToken(JToken.SEMICOLON.value);
+		statement.addToken(RIGHTPAREN);
+		statement.addToken(SEMICOLON);
 
 		this.statementsStack.pop();
 		this.variablesStack.pop();
@@ -1007,8 +1000,8 @@ public class JMCVisitor extends ASTVisitor {
 	public boolean visit(final SuperFieldAccess node) {
 
 		if (!this.statementsStack.isEmpty()) {
-			this.statementsStack.peek().addToken(JToken.SUPER.value);
-			this.statementsStack.peek().addToken(JToken.DOT.value);
+			this.statementsStack.peek().addToken(SUPER);
+			this.statementsStack.peek().addToken(DOT);
 			node.getName().accept(this);
 		}
 
@@ -1019,13 +1012,13 @@ public class JMCVisitor extends ASTVisitor {
 	public boolean visit(final SuperMethodInvocation node) {
 
 		if (!this.statementsStack.isEmpty()) {
-			this.statementsStack.peek().addToken(JToken.SUPER.value);
-			this.statementsStack.peek().addToken(JToken.DOT.value);
+			this.statementsStack.peek().addToken(SUPER);
+			this.statementsStack.peek().addToken(DOT);
 			final String name = node.getName().getIdentifier();
 			this.statementsStack.peek().addToken(name);
-			this.statementsStack.peek().addToken(JToken.LEFTPAREN.value);
+			this.statementsStack.peek().addToken(LEFTPAREN);
 			this.addTokens(this.statementsStack.peek(), node.arguments());
-			this.statementsStack.peek().addToken(JToken.RIGHTPAREN.value);
+			this.statementsStack.peek().addToken(RIGHTPAREN);
 		}
 
 		return false;
@@ -1046,12 +1039,12 @@ public class JMCVisitor extends ASTVisitor {
 		this.variablesStack.push(new HashMap<String, String>());
 
 		if (null != node.getExpression()) {
-			statement.addToken(JToken.CASE.value);
+			statement.addToken(CASE);
 			node.getExpression().accept(this);
 		} else {
-			statement.addToken(JToken.DEFAULT.value);
+			statement.addToken(DEFAULT);
 		}
-		statement.addToken(JToken.COLON.value);
+		statement.addToken(COLON);
 
 		this.statementsStack.pop();
 		this.variablesStack.pop();
@@ -1124,7 +1117,7 @@ public class JMCVisitor extends ASTVisitor {
 	public boolean visit(final ThisExpression node) {
 
 		if (!this.statementsStack.isEmpty()) {
-			this.statementsStack.peek().addToken(JToken.THIS.value);
+			this.statementsStack.peek().addToken(THIS);
 		}
 
 		return false;
@@ -1138,11 +1131,11 @@ public class JMCVisitor extends ASTVisitor {
 		this.statementsStack.push(statement);
 		this.variablesStack.push(new HashMap<String, String>());
 
-		statement.addToken(JToken.THROW.value);
+		statement.addToken(THROW);
 		if (null != node.getExpression()) {
 			node.getExpression().accept(this);
 		}
-		statement.addToken(JToken.SEMICOLON.value);
+		statement.addToken(SEMICOLON);
 
 		this.statementsStack.pop();
 		this.variablesStack.pop();
@@ -1173,8 +1166,8 @@ public class JMCVisitor extends ASTVisitor {
 
 		if (!this.statementsStack.isEmpty()) {
 			node.getType().accept(this);
-			this.statementsStack.peek().addToken(JToken.DOT.value);
-			this.statementsStack.peek().addToken(JToken.CLASS.value);
+			this.statementsStack.peek().addToken(DOT);
+			this.statementsStack.peek().addToken(CLASS);
 		}
 
 		return false;
@@ -1236,7 +1229,7 @@ public class JMCVisitor extends ASTVisitor {
 
 		node.getType().accept(this);
 		this.addTokens(statement, node.fragments());
-		statement.addToken(JToken.SEMICOLON.value);
+		statement.addToken(SEMICOLON);
 
 		this.statementsStack.pop();
 		this.variablesStack.pop();
@@ -1306,7 +1299,7 @@ public class JMCVisitor extends ASTVisitor {
 		node.accept(this);
 
 		for (int i = 1; i < list.size(); i++) {
-			statement.addToken(JToken.COMMA.value);
+			statement.addToken(COMMA);
 			((ASTNode) list.get(i)).accept(this);
 		}
 	}
