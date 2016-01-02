@@ -8,7 +8,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import yoshikihigo.jmc.data.DAO;
+import yoshikihigo.jmc.data.RegisterDAO;
 
 public class JMCRegister {
 
@@ -53,7 +53,7 @@ public class JMCRegister {
 	}
 
 	private static void parseJavaFiles(final List<File> files) {
-		DAO.SINGLETON.initialize();
+		RegisterDAO.SINGLETON.initialize();
 		final ExecutorService parserThreadPool = Executors
 				.newFixedThreadPool(JMCConfig.getInstance().getTHREAD());
 		final List<Future<?>> pFutures = new ArrayList<>();
@@ -70,9 +70,9 @@ public class JMCRegister {
 			for (final Future<?> future : pFutures) {
 				future.get();
 			}
-			DAO.SINGLETON.flush();
-			DAO.SINGLETON.addIndices();
-			DAO.SINGLETON.close();
+			RegisterDAO.SINGLETON.flush();
+			RegisterDAO.SINGLETON.addIndices();
+			RegisterDAO.SINGLETON.close();
 		} catch (final ExecutionException | InterruptedException e) {
 			e.printStackTrace();
 			System.exit(0);

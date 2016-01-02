@@ -9,19 +9,19 @@ import java.util.Collection;
 
 import yoshikihigo.jmc.JMCConfig;
 
-public class DAO {
+public class RegisterDAO {
 
 	static public final String METHODS_SCHEMA = "id integer primary key, file string, fromline integer, toline integer";
 	static public final String STATEMENTS_SCHEMA = "id integer primary key, methodID integer, hash blob, line integer";
-	static public final DAO SINGLETON = new DAO();
+	static public final RegisterDAO SINGLETON = new RegisterDAO();
 
 	private Connection connector;
-	private PreparedStatement methodsPS;
-	private PreparedStatement statementsPS;
+	private PreparedStatement methodInsertion;
+	private PreparedStatement statementInsertion;
 	private int numberOfMethods;
 	private int numberOfStatements;
 
-	private DAO() {
+	private RegisterDAO() {
 	}
 
 	public void initialize() {
@@ -39,9 +39,9 @@ public class DAO {
 					+ STATEMENTS_SCHEMA + ")");
 			statement.close();
 
-			this.methodsPS = this.connector
+			this.methodInsertion = this.connector
 					.prepareStatement("insert into methods values (?, ?, ?, ?)");
-			this.statementsPS = this.connector
+			this.statementInsertion = this.connector
 					.prepareStatement("insert into statements values(?, ?, ?, ?)");
 
 			this.numberOfMethods = 0;
@@ -57,18 +57,18 @@ public class DAO {
 	synchronized public void registerMethod(final JMethod method) {
 
 		try {
-			this.methodsPS.setInt(1, method.id);
-			this.methodsPS.setString(2, method.file);
-			this.methodsPS.setInt(3, method.fromLine);
-			this.methodsPS.setInt(4, method.toLine);
-			this.methodsPS.addBatch();
+			this.methodInsertion.setInt(1, method.id);
+			this.methodInsertion.setString(2, method.file);
+			this.methodInsertion.setInt(3, method.fromLine);
+			this.methodInsertion.setInt(4, method.toLine);
+			this.methodInsertion.addBatch();
 			this.numberOfMethods++;
 
 			if (10000 < this.numberOfMethods) {
 				if (JMCConfig.getInstance().isVERBOSE()) {
 					System.out.println("writing \'methods\' table ...");
 				}
-				this.methodsPS.executeBatch();
+				this.methodInsertion.executeBatch();
 				this.connector.commit();
 				this.numberOfMethods = 0;
 			}
@@ -87,18 +87,18 @@ public class DAO {
 	synchronized public void registerStatement(final JStatement statement) {
 
 		try {
-			this.statementsPS.setInt(1, statement.id);
-			this.statementsPS.setInt(2, statement.methodID);
-			this.statementsPS.setBytes(3, statement.getHash());
-			this.statementsPS.setInt(4, statement.line);
-			this.statementsPS.addBatch();
+			this.statementInsertion.setInt(1, statement.id);
+			this.statementInsertion.setInt(2, statement.methodID);
+			this.statementInsertion.setBytes(3, statement.getHash());
+			this.statementInsertion.setInt(4, statement.line);
+			this.statementInsertion.addBatch();
 			this.numberOfStatements++;
 
 			if (10000 < this.numberOfStatements) {
 				if (JMCConfig.getInstance().isVERBOSE()) {
 					System.out.println("writing \'statements\' table ...");
 				}
-				this.statementsPS.executeBatch();
+				this.statementInsertion.executeBatch();
 				this.connector.commit();
 				this.numberOfStatements = 0;
 			}
@@ -122,7 +122,7 @@ public class DAO {
 				if (JMCConfig.getInstance().isVERBOSE()) {
 					System.out.println("writing \'methods\' table ...");
 				}
-				this.methodsPS.executeBatch();
+				this.methodInsertion.executeBatch();
 				this.connector.commit();
 				this.numberOfMethods = 0;
 			}
@@ -130,7 +130,7 @@ public class DAO {
 				if (JMCConfig.getInstance().isVERBOSE()) {
 					System.out.println("writing \'statements\' table ...");
 				}
-				this.statementsPS.executeBatch();
+				this.statementInsertion.executeBatch();
 				this.connector.commit();
 				this.numberOfStatements = 0;
 			}
@@ -159,8 +159,8 @@ public class DAO {
 
 	synchronized public void close() {
 		try {
-			this.methodsPS.close();
-			this.statementsPS.close();
+			this.methodInsertion.close();
+			this.statementInsertion.close();
 			this.connector.close();
 		} catch (final SQLException e) {
 			e.printStackTrace();

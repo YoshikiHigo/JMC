@@ -30,6 +30,10 @@ public class TimingUtility {
 		}
 		text.append(seconds);
 		text.append(" seconds ");
+		if ((0 == hours) && (0 == minutes)) {
+			text.append(milli % 1000l);
+			text.append(" milliseconds ");
+		}
 
 		return text.toString();
 	}

@@ -13,7 +13,7 @@ import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 
-import yoshikihigo.jmc.data.DAO;
+import yoshikihigo.jmc.data.RegisterDAO;
 import yoshikihigo.jmc.data.JMethod;
 import yoshikihigo.jmc.data.JStatement;
 
@@ -55,14 +55,14 @@ public class MethodParseThread extends Thread {
 			return;
 		}
 
-		final JMCVisitor visitor = new JMCVisitor(file, unit);
+		final JMCVisitor visitor = new JMCVisitor(this.file, unit);
 		unit.accept(visitor);
 		final List<JMethod> methods = visitor.getMethods();
 		final List<JStatement> statements = methods.stream()
 				.flatMap(method -> method.getStatements().stream())
 				.collect(Collectors.toList());
 
-		DAO.SINGLETON.registerMethods(methods);
-		DAO.SINGLETON.registerStatements(statements);
+		RegisterDAO.SINGLETON.registerMethods(methods);
+		RegisterDAO.SINGLETON.registerStatements(statements);
 	}
 }

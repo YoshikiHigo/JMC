@@ -38,6 +38,24 @@ public class JMCConfig {
 		}
 
 		{
+			final Option target = new Option("target", "target", true,
+					"source file including a target method");
+			target.setArgName("file");
+			target.setArgs(1);
+			target.setRequired(false);
+			options.addOption(target);
+		}
+
+		{
+			final Option caret = new Option("caret", "caret", true,
+					"position of writing method");
+			caret.setArgName("number");
+			caret.setArgs(1);
+			caret.setRequired(false);
+			options.addOption(caret);
+		}
+
+		{
 			final Option thread = new Option("thd", "thread", true,
 					"end revision of repository for test");
 			thread.setArgName("thread");
@@ -102,6 +120,38 @@ public class JMCConfig {
 			System.exit(0);
 		}
 		return this.commandLine.getOptionValue("db");
+	}
+
+	public boolean hasCARET() {
+		return this.commandLine.hasOption("caret");
+	}
+
+	public int getCARET() {
+		if (!this.commandLine.hasOption("caret")) {
+			System.err.println("option \"caret\" is not specified.");
+			System.exit(0);
+		}
+		final String text = this.commandLine.getOptionValue("caret");
+		try {
+			return Integer.parseUnsignedInt(text);
+		} catch (final NumberFormatException e) {
+			System.err
+					.println("unsigned number must be specified for option \"caret\".");
+			System.exit(0);
+		}
+		return 0;
+	}
+
+	public boolean hasTARGET() {
+		return this.commandLine.hasOption("target");
+	}
+
+	public String getTARGET() {
+		if (!this.commandLine.hasOption("target")) {
+			System.err.println("option \"target\" is not specified.");
+			System.exit(0);
+		}
+		return this.commandLine.getOptionValue("target");
 	}
 
 	public int getTHREAD() {
