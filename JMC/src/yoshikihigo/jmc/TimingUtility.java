@@ -28,11 +28,12 @@ public class TimingUtility {
 			text.append(minutes);
 			text.append(" minutes ");
 		}
-		text.append(seconds);
-		text.append(" seconds ");
-		if ((0 == hours) && (0 == minutes)) {
-			text.append(milli % 1000l);
-			text.append(" milliseconds ");
+		if (0 < hours || 0 < minutes) {
+			text.append(seconds);
+			text.append(" seconds ");
+		} else {
+			text.append((float) milli / (float) 1000);
+			text.append(" seconds ");
 		}
 
 		return text.toString();

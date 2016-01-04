@@ -30,8 +30,8 @@ public class JStatement {
 		return String.join(" ", this.tokens);
 	}
 
-	public byte[] getHash() {
-		return getMD5(this.getText());
+	public Hash getHash() {
+		return new Hash(getMD5(this.getText()));
 	}
 
 	static private byte[] getMD5(final String text) {

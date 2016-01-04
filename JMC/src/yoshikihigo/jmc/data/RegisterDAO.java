@@ -89,7 +89,7 @@ public class RegisterDAO {
 		try {
 			this.statementInsertion.setInt(1, statement.id);
 			this.statementInsertion.setInt(2, statement.methodID);
-			this.statementInsertion.setBytes(3, statement.getHash());
+			this.statementInsertion.setBytes(3, statement.getHash().value);
 			this.statementInsertion.setInt(4, statement.line);
 			this.statementInsertion.addBatch();
 			this.numberOfStatements++;

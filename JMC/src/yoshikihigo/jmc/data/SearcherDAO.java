@@ -17,6 +17,7 @@ public class SearcherDAO {
 	private Connection connector;
 	private PreparedStatement statementSelection;
 	private PreparedStatement methodSelection;
+	private PreparedStatement hashSelection;
 
 	private SearcherDAO() {
 	}
@@ -33,6 +34,8 @@ public class SearcherDAO {
 					.prepareStatement("select distinct methodID from statements where hash = ?");
 			this.methodSelection = this.connector
 					.prepareStatement("select file, fromLine, toLine from methods where id = ?");
+			this.hashSelection = this.connector
+					.prepareStatement("select hash, line from statements where methodID = ? order by line asc");
 
 		} catch (final ClassNotFoundException | SQLException e) {
 			e.printStackTrace();
@@ -40,10 +43,10 @@ public class SearcherDAO {
 		}
 	}
 
-	public List<Integer> getMethodIDs(final byte[] hash) {
+	public List<Integer> getMethodIDs(final Hash hash) {
 		final List<Integer> methodIDs = new ArrayList<>();
 		try {
-			this.statementSelection.setBytes(1, hash);
+			this.statementSelection.setBytes(1, hash.value);
 			final ResultSet results = this.statementSelection.executeQuery();
 			while (results.next()) {
 				final int methodID = results.getInt(1);
@@ -70,5 +73,33 @@ public class SearcherDAO {
 			e.printStackTrace();
 		}
 		return method;
+	}
+
+	public List<DBStatement> getDBStatements(final int methodID) {
+		final List<DBStatement> statements = new ArrayList<>();
+		try {
+			this.hashSelection.setInt(1, methodID);
+			final ResultSet results = this.hashSelection.executeQuery();
+			while (results.next()) {
+				final Hash hash = new Hash(results.getBytes(1));
+				final int line = results.getInt(2);
+				final DBStatement statement = new DBStatement(hash, line);
+				statements.add(statement);
+			}
+		} catch (final SQLException e) {
+			e.printStackTrace();
+		}
+		return statements;
+	}
+
+	public void close() {
+		try {
+			this.statementSelection.close();
+			this.methodSelection.close();
+			this.hashSelection.close();
+			this.connector.close();
+		} catch (final SQLException e) {
+			e.printStackTrace();
+		}
 	}
 }

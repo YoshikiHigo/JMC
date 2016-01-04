@@ -15,6 +15,8 @@ import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 
 import yoshikihigo.jmc.data.DBMethod;
+import yoshikihigo.jmc.data.DBStatement;
+import yoshikihigo.jmc.data.Hash;
 import yoshikihigo.jmc.data.JMethod;
 import yoshikihigo.jmc.data.JStatement;
 import yoshikihigo.jmc.data.SearcherDAO;
@@ -33,6 +35,9 @@ public class JMCSearcher {
 		final JMCSearcher searcher = new JMCSearcher(path, caret);
 		final List<DBMethod> methods = searcher.search();
 		final long timeToEnd = System.nanoTime();
+
+		methods.forEach(method -> System.out.println(method.id));
+
 		System.out.println(TimingUtility.getExecutionTime(timeToStart,
 				timeToEnd));
 	}
@@ -44,26 +49,43 @@ public class JMCSearcher {
 
 	public List<DBMethod> search() {
 
-		final JMethod targetMethod = this.getTargetMethod();
-		final List<JStatement> targetStatements = targetMethod.getStatements();
+		final JMethod tMethod = this.getTargetMethod();
+		final List<JStatement> tStatements = tMethod.getStatements();
+		final List<Hash> tHashs = tStatements.stream()
+				.map(statement -> statement.getHash())
+				.collect(Collectors.toList());
 
-		if (targetStatements.isEmpty()) {
+		if (tStatements.isEmpty()) {
 			return Collections.emptyList();
 		}
 
 		final SearcherDAO dao = SearcherDAO.SINGLETON;
 		dao.initialize();
-		byte[] hash = targetStatements.get(0).getHash();
-		final Set<Integer> methodIDs = new HashSet<>(dao.getMethodIDs(hash));
-		for (int i = 1; i < targetStatements.size(); i++) {
-			hash = targetStatements.get(i).getHash();
-			methodIDs.retainAll(dao.getMethodIDs(hash));
+		Hash tHash = tHashs.get(0);
+		final Set<Integer> methodIDs = new HashSet<>(dao.getMethodIDs(tHash));
+		for (int i = 1; i < tStatements.size(); i++) {
+			tHash = tHashs.get(i);
+			methodIDs.retainAll(dao.getMethodIDs(tHash));
 		}
-
-		final List<DBMethod> methods = methodIDs.stream()
+		final List<DBMethod> dbMethods = methodIDs.stream()
 				.map(methodID -> dao.getDBMethod(methodID))
 				.collect(Collectors.toList());
-		return methods;
+		dbMethods.stream().forEach(
+				dbMethod -> {
+					final List<DBStatement> dbStatements = dao
+							.getDBStatements(dbMethod.id);
+					dbMethod.addStatements(dbStatements);
+					final long sum = dbStatements.size();
+					final long count = dbStatements.stream()
+							.map(statement -> statement.hash)
+							.filter(hash -> tHashs.contains(hash)).count();
+					final double fitness = (double) count / (double) sum;
+					dbMethod.setFitness(fitness);
+				});
+		Collections.sort(dbMethods,
+				(e1, e2) -> Double.compare(e2.getFitness(), e1.getFitness()));
+		dao.close();
+		return dbMethods;
 	}
 
 	private JMethod getTargetMethod() {
