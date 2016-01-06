@@ -1,5 +1,6 @@
 package yoshikihigo.jmc;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -36,10 +37,41 @@ public class JMCSearcher {
 		final List<DBMethod> methods = searcher.search();
 		final long timeToEnd = System.nanoTime();
 
-		methods.forEach(method -> System.out.println(method.id));
+		methods.stream().filter(method -> 0.2 <= method.getFitness())
+				.forEach(method -> {
+					final String text = getSourcecode(method);
+					System.out.println("-------------------");
+					System.out.print(text);
+				});
 
 		System.out.println(TimingUtility.getExecutionTime(timeToStart,
 				timeToEnd));
+	}
+
+	public static String getSourcecode(final DBMethod method) {
+
+		List<String> lines = null;
+		try {
+			lines = Files.readAllLines(Paths.get(method.file),
+					StandardCharsets.UTF_8);
+		} catch (final IOException e) {
+			System.err.println("cannot read \"" + method.file + "\"");
+			return "";
+		}
+
+		final StringBuilder text = new StringBuilder();
+		if (lines.size() < method.toLine) {
+			System.err.println("incorrect file size \"" + method.file + "\"");
+			return "";
+		}
+
+		for (int i = method.fromLine; i <= method.toLine; i++) {
+			final String line = lines.get(i - 1);
+			text.append(line);
+			text.append(System.lineSeparator());
+		}
+
+		return text.toString();
 	}
 
 	public JMCSearcher(final String path, final int caret) {
