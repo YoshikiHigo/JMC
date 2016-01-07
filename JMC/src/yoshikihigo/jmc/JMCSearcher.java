@@ -37,12 +37,11 @@ public class JMCSearcher {
 		final List<DBMethod> methods = searcher.search();
 		final long timeToEnd = System.nanoTime();
 
-		methods.stream().filter(method -> 0.2 <= method.getFitness())
-				.forEach(method -> {
-					final String text = getSourcecode(method);
-					System.out.println("-------------------");
-					System.out.print(text);
-				});
+		methods.stream().forEach(method -> {
+			final String text = getSourcecode(method);
+			System.out.println("-------------------");
+			System.out.print(text);
+		});
 
 		System.out.println(TimingUtility.getExecutionTime(timeToStart,
 				timeToEnd));
