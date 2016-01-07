@@ -36,7 +36,7 @@ public class MethodParseThread extends Thread {
 		List<String> lines = null;
 		try {
 			lines = Files.readAllLines(Paths.get(this.file),
-					StandardCharsets.UTF_8);
+					StandardCharsets.ISO_8859_1);
 		} catch (final Exception e) {
 			READ_FAILED_FILES.add(this.file);
 			return;

@@ -53,7 +53,7 @@ public class JMCSearcher {
 		List<String> lines = null;
 		try {
 			lines = Files.readAllLines(Paths.get(method.file),
-					StandardCharsets.UTF_8);
+					StandardCharsets.ISO_8859_1);
 		} catch (final IOException e) {
 			System.err.println("cannot read \"" + method.file + "\"");
 			return "";
