@@ -78,6 +78,24 @@ public class JMCConfig {
 			options.addOption(debug);
 		}
 
+		{
+			final Option clones = new Option("clones", "clones", true,
+					"file to output detected cloens");
+			clones.setArgName("file");
+			clones.setArgs(1);
+			clones.setRequired(false);
+			options.addOption(clones);
+		}
+
+		{
+			final Option threshold = new Option("t", "threshold", true,
+					"minimum clone size to detect");
+			threshold.setArgName("number");
+			threshold.setArgs(1);
+			threshold.setRequired(false);
+			options.addOption(threshold);
+		}
+
 		try {
 			final CommandLineParser parser = new PosixParser();
 			final CommandLine commandLine = parser.parse(options, args);
@@ -165,5 +183,29 @@ public class JMCConfig {
 
 	public boolean isDEBUG() {
 		return this.commandLine.hasOption("debug");
+	}
+
+	public String getCLONES() {
+		if (!this.commandLine.hasOption("clones")) {
+			System.err.println("option \"clones\" is not specified.");
+			System.exit(0);
+		}
+		return this.commandLine.getOptionValue("clones");
+	}
+
+	public int getTHRESHOLD() {
+		if (!this.commandLine.hasOption("threshold")) {
+			System.err.println("option \"threshold\" is not specified.");
+			System.exit(0);
+		}
+		final String text = this.commandLine.getOptionValue("threshold");
+		try {
+			return Integer.parseUnsignedInt(text);
+		} catch (final NumberFormatException e) {
+			System.err
+					.println("unsigned number must be specified for option \"threshold\".");
+			System.exit(0);
+		}
+		return 0;
 	}
 }

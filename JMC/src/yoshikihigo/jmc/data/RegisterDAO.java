@@ -11,7 +11,7 @@ import yoshikihigo.jmc.JMCConfig;
 
 public class RegisterDAO {
 
-	static public final String METHODS_SCHEMA = "id integer primary key, file string, fromline integer, toline integer";
+	static public final String METHODS_SCHEMA = "id integer primary key, hash blob, file string, fromline integer, toline integer, tokens integer";
 	static public final String STATEMENTS_SCHEMA = "id integer primary key, methodID integer, hash blob, line integer";
 	static public final RegisterDAO SINGLETON = new RegisterDAO();
 
@@ -40,7 +40,7 @@ public class RegisterDAO {
 			statement.close();
 
 			this.methodInsertion = this.connector
-					.prepareStatement("insert into methods values (?, ?, ?, ?)");
+					.prepareStatement("insert into methods values (?, ?, ?, ?, ?, ?)");
 			this.statementInsertion = this.connector
 					.prepareStatement("insert into statements values(?, ?, ?, ?)");
 
@@ -58,9 +58,11 @@ public class RegisterDAO {
 
 		try {
 			this.methodInsertion.setInt(1, method.id);
-			this.methodInsertion.setString(2, method.file);
-			this.methodInsertion.setInt(3, method.fromLine);
-			this.methodInsertion.setInt(4, method.toLine);
+			this.methodInsertion.setBytes(2, method.getHash().value);
+			this.methodInsertion.setString(3, method.file);
+			this.methodInsertion.setInt(4, method.fromLine);
+			this.methodInsertion.setInt(5, method.toLine);
+			this.methodInsertion.setInt(6, method.getNumberOfTokens());
 			this.methodInsertion.addBatch();
 			this.numberOfMethods++;
 
@@ -145,7 +147,11 @@ public class RegisterDAO {
 		try {
 			final Statement statement = this.connector.createStatement();
 			statement
+					.executeUpdate("create index index_hash_methods on methods(hash)");
+			statement
 					.executeUpdate("create index index_file_methods on methods(file)");
+			statement
+					.executeUpdate("create index index_tokens_methods on methods(tokens)");
 			statement
 					.executeUpdate("create index index_hash_statements on statements(hash)");
 			statement

@@ -3,6 +3,7 @@ package yoshikihigo.jmc.data;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class JMethod {
 
@@ -27,5 +28,17 @@ public class JMethod {
 
 	public List<JStatement> getStatements() {
 		return new ArrayList<JStatement>(this.statements);
+	}
+
+	public Hash getHash() {
+		final List<String> texts = this.statements.stream()
+				.map(statement -> statement.getText())
+				.collect(Collectors.toList());
+		return Hash.getMD5(String.join(System.lineSeparator(), texts));
+	}
+
+	public int getNumberOfTokens() {
+		return this.statements.stream()
+				.mapToInt(statement -> statement.getNumberOfTokens()).sum();
 	}
 }
