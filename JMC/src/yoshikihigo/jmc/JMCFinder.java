@@ -34,11 +34,11 @@ public class JMCFinder {
 			for (final List<JMethod> methods : clones) {
 				for (final JMethod method : methods) {
 					writer.print(Integer.toString(id));
-					writer.print("\t");
+					writer.print(", ");
 					writer.print(method.file);
-					writer.print("\t");
+					writer.print(", ");
 					writer.print(method.fromLine);
-					writer.print("\t");
+					writer.print(", ");
 					writer.print(method.toLine);
 					writer.println();
 				}
