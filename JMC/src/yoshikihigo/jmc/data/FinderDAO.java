@@ -5,6 +5,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,9 +13,12 @@ import yoshikihigo.jmc.JMCConfig;
 
 public class FinderDAO {
 
+	static public final String CLONES_SCHEMA = "id integer primary key autoincrement, cloneID integer, methodID integer";
 	static public final FinderDAO SINGLETON = new FinderDAO();
 
 	private PreparedStatement methodSelection;
+	private PreparedStatement cloneInsertion;
+	private int numberOfClones;
 
 	private Connection connector;
 
@@ -29,8 +33,23 @@ public class FinderDAO {
 			this.connector = DriverManager.getConnection("jdbc:sqlite:"
 					+ database);
 
+			final Statement statement = this.connector.createStatement();
+			statement
+					.executeUpdate("drop index if exists index_cloneID_clones");
+			statement
+					.executeUpdate("drop index if exists index_methodID_clones");
+			statement.executeUpdate("drop table if exists clones");
+			statement.executeUpdate("create table clones (" + CLONES_SCHEMA
+					+ ")");
+			statement.close();
+
 			this.methodSelection = this.connector
 					.prepareStatement("select file, fromLine, toLine from methods where hash = ?");
+			this.cloneInsertion = this.connector
+					.prepareStatement("insert into clones (cloneID, methodID) values (?, ?)");
+
+			this.numberOfClones = 0;
+			this.connector.setAutoCommit(false);
 
 		} catch (final ClassNotFoundException | SQLException e) {
 			e.printStackTrace();
@@ -71,6 +90,66 @@ public class FinderDAO {
 			e.printStackTrace();
 		}
 		return methods;
+	}
+
+	private void registerClone(final int cloneID, final JMethod method) {
+		try {
+			this.cloneInsertion.setInt(1, cloneID);
+			this.cloneInsertion.setInt(2, method.id);
+			this.cloneInsertion.addBatch();
+			this.numberOfClones++;
+
+			if (10000 < this.numberOfClones) {
+				if (JMCConfig.getInstance().isVERBOSE()) {
+					System.out.println("writing \'clones\' table ...");
+				}
+				this.cloneInsertion.executeBatch();
+				this.connector.commit();
+				this.numberOfClones = 0;
+			}
+
+		} catch (final SQLException e) {
+			e.printStackTrace();
+			System.exit(0);
+		}
+	}
+
+	synchronized public void registerClones(final List<List<JMethod>> clones) {
+		int cloneID = 1;
+		for (final List<JMethod> group : clones) {
+			group.stream().forEach(
+					method -> this.registerClone(cloneID, method));
+		}
+	}
+
+	synchronized public void flush() {
+		try {
+			if (0 < this.numberOfClones) {
+				if (JMCConfig.getInstance().isVERBOSE()) {
+					System.out.println("writing \'clones\' table ...");
+				}
+				this.cloneInsertion.executeBatch();
+				this.connector.commit();
+				this.numberOfClones = 0;
+			}
+		} catch (final SQLException e) {
+			e.printStackTrace();
+			System.exit(0);
+		}
+	}
+
+	synchronized public void addIndices() {
+		try {
+			final Statement statement = this.connector.createStatement();
+			statement
+					.executeUpdate("create index index_cloneID_clones on clones(cloneID)");
+			statement
+					.executeUpdate("create index index_methodID_clones on clones(methodID)");
+			this.connector.commit();
+			statement.close();
+		} catch (final SQLException e) {
+			e.printStackTrace();
+		}
 	}
 
 	public void close() {

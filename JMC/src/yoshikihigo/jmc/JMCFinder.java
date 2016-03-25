@@ -26,27 +26,36 @@ public class JMCFinder {
 				.map(hash -> FinderDAO.SINGLETON.getMethods(hash))
 				.collect(Collectors.toList());
 
-		try (final PrintWriter writer = new PrintWriter(new BufferedWriter(
-				new OutputStreamWriter(new FileOutputStream(JMCConfig
-						.getInstance().getCLONES()), "UTF-8")))) {
+		if (JMCConfig.getInstance().hasCLONES()) {
+			try (final PrintWriter writer = new PrintWriter(new BufferedWriter(
+					new OutputStreamWriter(new FileOutputStream(JMCConfig
+							.getInstance().getCLONES()), "UTF-8")))) {
 
-			int id = 1;
-			for (final List<JMethod> methods : clones) {
-				for (final JMethod method : methods) {
-					writer.print(Integer.toString(id));
-					writer.print(", ");
-					writer.print(method.file);
-					writer.print(", ");
-					writer.print(method.fromLine);
-					writer.print(", ");
-					writer.print(method.toLine);
-					writer.println();
+				int id = 1;
+				for (final List<JMethod> methods : clones) {
+					for (final JMethod method : methods) {
+						writer.print(Integer.toString(id));
+						writer.print(", ");
+						writer.print(method.file);
+						writer.print(", ");
+						writer.print(method.fromLine);
+						writer.print(", ");
+						writer.print(method.toLine);
+						writer.println();
+					}
+					id++;
 				}
-				id++;
-			}
 
-		} catch (final IOException e) {
-			e.printStackTrace();
+			} catch (final IOException e) {
+				e.printStackTrace();
+			}
 		}
+
+		else {
+			FinderDAO.SINGLETON.registerClones(clones);
+			FinderDAO.SINGLETON.flush();
+			FinderDAO.SINGLETON.addIndices();
+		}
+		FinderDAO.SINGLETON.close();
 	}
 }

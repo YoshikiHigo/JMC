@@ -184,6 +184,10 @@ public class JMCConfig {
 	public boolean isDEBUG() {
 		return this.commandLine.hasOption("debug");
 	}
+	
+	public boolean hasCLONES(){
+		return this.commandLine.hasOption("clones");
+	}
 
 	public String getCLONES() {
 		if (!this.commandLine.hasOption("clones")) {
