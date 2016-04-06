@@ -74,8 +74,8 @@ public class FinderDAO {
 		return hashs;
 	}
 
-	public List<JMethod> getMethods(final Hash hash) {
-		final List<JMethod> methods = new ArrayList<>();
+	public DBClone getMethods(final Hash hash) {
+		final DBClone clone = new DBClone();
 		try {
 			this.methodSelection.setBytes(1, hash.value);
 			final ResultSet results = this.methodSelection.executeQuery();
@@ -84,42 +84,41 @@ public class FinderDAO {
 				final int fromline = results.getInt(2);
 				final int toline = results.getInt(3);
 				final JMethod method = new JMethod(file, fromline, toline);
-				methods.add(method);
+				clone.addMethod(method);
 			}
 		} catch (final SQLException e) {
 			e.printStackTrace();
 		}
-		return methods;
+		return clone;
 	}
 
-	private void registerClone(final int cloneID, final JMethod method) {
-		try {
-			this.cloneInsertion.setInt(1, cloneID);
-			this.cloneInsertion.setInt(2, method.id);
-			this.cloneInsertion.addBatch();
-			this.numberOfClones++;
+	private void registerClone(final DBClone clone) {
 
-			if (10000 < this.numberOfClones) {
-				if (JMCConfig.getInstance().isVERBOSE()) {
-					System.out.println("writing \'clones\' table ...");
+		for (final JMethod method : clone.getMethods()) {
+			try {
+				this.cloneInsertion.setInt(1, clone.id);
+				this.cloneInsertion.setInt(2, method.id);
+				this.cloneInsertion.addBatch();
+				this.numberOfClones++;
+
+				if (10000 < this.numberOfClones) {
+					if (JMCConfig.getInstance().isVERBOSE()) {
+						System.out.println("writing \'clones\' table ...");
+					}
+					this.cloneInsertion.executeBatch();
+					this.connector.commit();
+					this.numberOfClones = 0;
 				}
-				this.cloneInsertion.executeBatch();
-				this.connector.commit();
-				this.numberOfClones = 0;
-			}
 
-		} catch (final SQLException e) {
-			e.printStackTrace();
-			System.exit(0);
+			} catch (final SQLException e) {
+				e.printStackTrace();
+				System.exit(0);
+			}
 		}
 	}
 
-	synchronized public void registerClones(final List<List<JMethod>> clones) {
-		int cloneID = 1;
-		for (final List<JMethod> group : clones) {
-			group.stream().forEach(
-					method -> this.registerClone(cloneID, method));
-		}
+	synchronized public void registerClones(final List<DBClone> clones) {
+		clones.stream().forEach(clone -> this.registerClone(clone));
 	}
 
 	synchronized public void flush() {

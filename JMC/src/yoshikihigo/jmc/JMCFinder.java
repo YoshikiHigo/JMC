@@ -8,6 +8,7 @@ import java.io.PrintWriter;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import yoshikihigo.jmc.data.DBClone;
 import yoshikihigo.jmc.data.FinderDAO;
 import yoshikihigo.jmc.data.Hash;
 import yoshikihigo.jmc.data.JMethod;
@@ -22,7 +23,7 @@ public class JMCFinder {
 		FinderDAO.SINGLETON.initialize();
 		final List<Hash> hashs = FinderDAO.SINGLETON.getClonedHashs(threshold);
 
-		final List<List<JMethod>> clones = hashs.stream()
+		final List<DBClone> clones = hashs.stream()
 				.map(hash -> FinderDAO.SINGLETON.getMethods(hash))
 				.collect(Collectors.toList());
 
@@ -31,10 +32,9 @@ public class JMCFinder {
 					new OutputStreamWriter(new FileOutputStream(JMCConfig
 							.getInstance().getCLONES()), "UTF-8")))) {
 
-				int id = 1;
-				for (final List<JMethod> methods : clones) {
-					for (final JMethod method : methods) {
-						writer.print(Integer.toString(id));
+				for (final DBClone clone : clones) {
+					for (final JMethod method : clone.getMethods()) {
+						writer.print(Integer.toString(clone.id));
 						writer.print(", ");
 						writer.print(method.file);
 						writer.print(", ");
@@ -43,7 +43,6 @@ public class JMCFinder {
 						writer.print(method.toLine);
 						writer.println();
 					}
-					id++;
 				}
 
 			} catch (final IOException e) {
