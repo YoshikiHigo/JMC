@@ -9,9 +9,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import yoshikihigo.jmc.data.DBClone;
+import yoshikihigo.jmc.data.DBMethod;
 import yoshikihigo.jmc.data.FinderDAO;
 import yoshikihigo.jmc.data.Hash;
-import yoshikihigo.jmc.data.JMethod;
 
 public class JMCFinder {
 
@@ -33,7 +33,7 @@ public class JMCFinder {
 							.getInstance().getCLONES()), "UTF-8")))) {
 
 				for (final DBClone clone : clones) {
-					for (final JMethod method : clone.getMethods()) {
+					for (final DBMethod method : clone.getMethods()) {
 						writer.print(Integer.toString(clone.id));
 						writer.print(", ");
 						writer.print(method.file);

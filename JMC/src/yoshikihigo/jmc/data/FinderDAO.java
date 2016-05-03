@@ -44,7 +44,7 @@ public class FinderDAO {
 			statement.close();
 
 			this.methodSelection = this.connector
-					.prepareStatement("select file, fromLine, toLine from methods where hash = ?");
+					.prepareStatement("select id, file, fromLine, toLine from methods where hash = ?");
 			this.cloneInsertion = this.connector
 					.prepareStatement("insert into clones (cloneID, methodID) values (?, ?)");
 
@@ -80,10 +80,11 @@ public class FinderDAO {
 			this.methodSelection.setBytes(1, hash.value);
 			final ResultSet results = this.methodSelection.executeQuery();
 			while (results.next()) {
-				final String file = results.getString(1);
-				final int fromline = results.getInt(2);
-				final int toline = results.getInt(3);
-				final JMethod method = new JMethod(file, fromline, toline);
+				final int id = results.getInt(1);
+				final String file = results.getString(2);
+				final int fromline = results.getInt(3);
+				final int toline = results.getInt(4);
+				final DBMethod method = new DBMethod(id, file, fromline, toline);
 				clone.addMethod(method);
 			}
 		} catch (final SQLException e) {
@@ -94,7 +95,7 @@ public class FinderDAO {
 
 	private void registerClone(final DBClone clone) {
 
-		for (final JMethod method : clone.getMethods()) {
+		for (final DBMethod method : clone.getMethods()) {
 			try {
 				this.cloneInsertion.setInt(1, clone.id);
 				this.cloneInsertion.setInt(2, method.id);
